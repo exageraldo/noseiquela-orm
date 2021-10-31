@@ -1,9 +1,10 @@
-from typing import Any
+from typing import Any, Callable, Dict
 from google.cloud.datastore.entity import Entity as GoogleEntity
 
 from .client import DataStoreClient
 from .query import Query
 from .fields import BaseField, BaseKey, KeyField
+from .utils.case_style import CaseStyle
 
 
 class EntityMetaClass(type):
@@ -14,6 +15,12 @@ class EntityMetaClass(type):
         self._parent_entity = attrs.get("__parent__")
         self._project = attrs.get("__project__") or self._client.project
         self._namespace = attrs.get("__namespace__") or self._client.namespace
+
+        _case_style = attrs.get("__case_style__") or {}
+        self._convert_property_name = CaseStyle(
+            from_case=_case_style.get("from") or "snake_case",
+            to_case=_case_style.get("to") or "camel_case",
+        )
 
         self.query = Query(
             partial_query=self._client._get_partial_query(
@@ -126,7 +133,9 @@ class Entity(metaclass=EntityMetaClass):
         if "parent_id" in entity.keys():
             del entity["parent_id"]
 
-        self.id = self._client.save(entity=entity)
+        self.id = self._client.save(
+            entity=self._mount_google_entity(entity)
+        )
 
     def to_dict(self):
         return {
@@ -147,9 +156,19 @@ class Entity(metaclass=EntityMetaClass):
             setattr(instance, "parent_id", entity.key.parent.id)
 
         for field in _fields_to_mount:
-            setattr(instance, field, entity.get(cls._to_camel_case(field)))
-
+            setattr(instance, field, entity.get(
+                cls._convert_property_name(field)
+            ))
         return instance
+
+    def _mount_google_entity(self, entity_dict: Dict) -> GoogleEntity:
+        entity_key = entity_dict.pop("id")
+        entity = GoogleEntity(entity_key)
+        for key, value in entity_dict.items():
+            key_name = self._convert_property_name(key)
+            entity[key_name] = value
+
+        return entity
 
     def __repr__(self) -> str:
         return (

@@ -8,36 +8,10 @@ from json import dumps
 from dateutil.parser import parse
 
 
-class CaseStyle:
-    @staticmethod
-    def camel_case(key: str) -> str:
-        splited_key = key.split('_')
-        return splited_key[0] + ''.join(
-            [x.title() for x in splited_key[1:]]
-        )
-
-    @staticmethod
-    def pascal_case(key: str) -> str:
-        splited_key = key.split('_')
-        return ''.join(
-            [x.title() for x in splited_key]
-        )
-
-    @staticmethod
-    def kebab_case(key: str) -> str:
-        return key.replace("_", "-")
-
-    @staticmethod
-    def snake_case(key: str) -> str:
-        return key
-
-
 class BaseField:
     def __init__(
         self,
         db_field: Optional[str]=None,
-        # case_style: None,
-        case_style: Callable=CaseStyle.camel_case,
         required: bool=False,
         default: Optional[Any]=None,
         choices: Optional[Iterable]=None,
@@ -46,12 +20,6 @@ class BaseField:
     ) -> None:
         self.db_field = db_field
         self.required = required
-        self.case_style = case_style
-        # _default_style_case = {
-        #   "from": "snake_case",
-        #   "to": "camel_case"
-        # }
-        # self.case_style = case_style or _default_style_case
         self.default_value = default
         self.choices = choices
         self.validation = validation
