@@ -1,0 +1,2 @@
+google-cloud-datastore~=2.3
+python-dateutil~=2.8
