@@ -20,23 +20,13 @@ class DataStoreClient:
             kind=kind
         )
 
-    @staticmethod
-    def _mount_google_entity(entity_dict) -> datastore.Entity:
-        entity_key = entity_dict.pop("id")
-        entity = datastore.Entity(entity_key)
-        for key, value in entity_dict.items():
-            entity[key] = value
-
-        return entity
-
     def save(self, entity, retry=None, timeout=None):
-        google_entity = self._mount_google_entity(entity)
         self._client.put_multi(
-            entities=[google_entity],
+            entities=[entity],
             retry=retry,
             timeout=timeout
         )
-        return google_entity.key.id
+        return entity.key.id
 
     @property
     def project(self):

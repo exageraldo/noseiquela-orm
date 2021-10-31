@@ -79,6 +79,6 @@ class Query:
             _key = processed_key[0]
             _operation = processed_key[1] if len(processed_key) > 1 else DEFAULT_QUERY_OPERATION
             _operation = OPERATIONS_TO_QUERY[_operation]
-            result.append((_key, _operation, value))
+            result.append((self.entity_instance._convert_property_name(_key), _operation, value))
 
         return tuple(result)
