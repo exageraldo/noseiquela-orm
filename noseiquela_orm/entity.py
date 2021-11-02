@@ -12,45 +12,51 @@ class EntityMetaClass(type):
         super().__init__(name, bases, attrs)
 
         self.kind = attrs.get("__kind__") or name
-        self._parent_entity = attrs.get("__parent__")
-        self._project = attrs.get("__project__") or self._client.project
-        self._namespace = attrs.get("__namespace__") or self._client.namespace
 
-        _case_style = attrs.get("__case_style__") or {}
-        self._convert_property_name = CaseStyle(
-            from_case=_case_style.get("from") or "snake_case",
-            to_case=_case_style.get("to") or "camel_case",
-        )
-
-        self.query = Query(
-            partial_query=self._client._get_partial_query(
-                kind=self.kind
-            ),
-            entity_instance=self
-        )
+        self._process_meta(attrs)
+        self._define_datastore_client()
+        self._define_case_style(attrs)
+        self._mount_query()
 
         self._partial_key = KeyField(
             entity_kind=self.kind,
-            project=self._project,
-            namespace=self._namespace
+            project=self.project,
+            namespace=self.namespace
         )
 
-        self._entity_types = {
-            key: value._validate
-            for key, value in attrs.items()
-            if isinstance(value, BaseField)
-        }
+        self._handle_properties_validation(attrs)
+        self._handle_required_properties(attrs)
+        self._handle_properties_default_value(attrs)
+        self._handle_parent_key(attrs)
 
-        self._entity_types.update({
-            "id": self._partial_key._validate
-        })
+        self._entity_fields = list(self._entity_types.keys())
 
-        self._required = [
-            key for key, value in attrs.items()
-            if (isinstance(value, BaseField) and
-                value.required)
-        ]
+    @property
+    def project(self) -> str:
+        return self._client.project
 
+    @property
+    def namespace(self) -> str:
+        return self._client.namespace
+
+    def _define_datastore_client(self) -> None:
+        self._client = DataStoreClient(
+            **self._client_args
+        )
+
+    def _handle_parent_key(self, attrs) -> None:
+        self._parent_entity = attrs.get("__parent__")
+
+        if self._parent_entity:
+            self._required.append("parent_id")
+            self._entity_types.update({
+                "parent_id": self._parent_entity._validate
+            })
+            self._defaults.update({
+                "parent_id": None
+            })
+
+    def _handle_properties_default_value(self, attrs) -> None:
         self._defaults = {
             key: value.default_value
             for key, value in attrs.items()
@@ -62,21 +68,60 @@ class EntityMetaClass(type):
             "id": None
         })
 
-        if self._parent_entity:
-            self._required.append("parent_id")
-            self._entity_types.update({
-                "parent_id": self._parent_entity._validate
-            })
-            self._defaults.update({
-                "parent_id": None
-            })
+    def _handle_properties_validation(self, attrs) -> None:
+        self._entity_types = {
+            key: value._validate
+            for key, value in attrs.items()
+            if isinstance(value, BaseField)
+        }
 
-        self._entity_fields = list(self._entity_types.keys())
+        self._entity_types.update({
+            "id": self._partial_key._validate
+        })
+
+    def _mount_query(self) -> None:
+        self.query = Query(
+            partial_query=self._client._get_partial_query(
+                kind=self.kind
+            ),
+            entity_instance=self
+        )
+
+    def _handle_required_properties(self, attrs) -> None:
+        self._required = [
+            key for key, value in attrs.items()
+            if (isinstance(value, BaseField) and
+                value.required)
+        ]
+
+    def _define_case_style(self, attrs) -> None:
+        _case_style = attrs.get("__case_style__") or {}
+        self._convert_property_name = CaseStyle(
+            from_case=_case_style.get("from") or "snake_case",
+            to_case=_case_style.get("to") or "camel_case",
+        )
+
+    def _process_meta(self, attrs) -> None:
+        _client_args = (
+            "project",
+            "namespace",
+            "credentials",
+            "client_info",
+            "client_options",
+            "_http",
+            "_use_grpc"
+        )
+
+        meta_class = attrs.get("Meta")
+
+        self._client_args = {
+            arg: meta_attr
+            for arg in _client_args
+            if ((meta_attr := getattr(meta_class, arg, None)) is not None)
+        } if isinstance(meta_class, type) else {}
 
 
 class Entity(metaclass=EntityMetaClass):
-    _client = DataStoreClient()
-
     def __init__(self, **kwargs):
         self._data = {
             "id": None
@@ -100,13 +145,6 @@ class Entity(metaclass=EntityMetaClass):
         super().__setattr__(key, value)
         if key in super().__getattribute__("_entity_types"):
             self._data[key] = self._entity_types[key](value)
-
-    @staticmethod
-    def _to_camel_case(key: str) -> str:
-        splited_key = key.split('_')
-        return splited_key[0] + ''.join(
-            [x.title() for x in splited_key[1:]]
-        )
 
     def save(self):
         for required_property in self._required:
@@ -134,7 +172,10 @@ class Entity(metaclass=EntityMetaClass):
             del entity["parent_id"]
 
         self.id = self._client.save(
-            entity=self._mount_google_entity(entity)
+            entity=self._client._mount_google_entity(
+                entity,
+                self._convert_property_name
+            )
         )
 
     def to_dict(self):
@@ -160,15 +201,6 @@ class Entity(metaclass=EntityMetaClass):
                 cls._convert_property_name(field)
             ))
         return instance
-
-    def _mount_google_entity(self, entity_dict: Dict) -> GoogleEntity:
-        entity_key = entity_dict.pop("id")
-        entity = GoogleEntity(entity_key)
-        for key, value in entity_dict.items():
-            key_name = self._convert_property_name(key)
-            entity[key_name] = value
-
-        return entity
 
     def __repr__(self) -> str:
         return (
