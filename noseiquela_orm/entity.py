@@ -1,14 +1,14 @@
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Tuple
 from google.cloud.datastore.entity import Entity as GoogleEntity
 
 from .client import DataStoreClient
 from .query import Query
-from .fields import BaseField, BaseKey, KeyField
+from .properties import BaseProperty, BaseKey, KeyProperty
 from .utils.case_style import CaseStyle
 
 
 class EntityMetaClass(type):
-    def __init__(self, name, bases, attrs):
+    def __init__(self, name: str, bases: Tuple, attrs: Dict) -> None:
         super().__init__(name, bases, attrs)
 
         self.kind = attrs.get("__kind__") or name
@@ -16,12 +16,73 @@ class EntityMetaClass(type):
         self._project = attrs.get("__project__") or self._client.project
         self._namespace = attrs.get("__namespace__") or self._client.namespace
 
-        _case_style = attrs.get("__case_style__") or {}
-        self._convert_property_name = CaseStyle(
-            from_case=_case_style.get("from") or "snake_case",
-            to_case=_case_style.get("to") or "camel_case",
+        self._process_meta(attrs)
+        self._define_datastore_client()
+        self._define_case_style(attrs)
+        self._mount_query()
+
+        self._partial_key = KeyProperty(
+            entity_kind=self.kind,
+            project=self.project,
+            namespace=self.namespace
         )
 
+        self._handle_properties_validation(attrs)
+        self._handle_required_properties(attrs)
+        self._handle_properties_default_value(attrs)
+        self._handle_parent_key(attrs)
+
+        self._entity_properties = list(self._entity_types.keys())
+
+    @property
+    def project(self) -> str:
+        return self._client.project
+
+    @property
+    def namespace(self) -> str:
+        return self._client.namespace
+
+    def _define_datastore_client(self) -> None:
+        self._client = DataStoreClient(
+            **self._client_args
+        )
+
+    def _handle_parent_key(self, attrs: Tuple) -> None:
+        self._parent_entity = attrs.get("__parent__")
+
+        if self._parent_entity:
+            self._required.append("parent_id")
+            self._entity_types.update({
+                "parent_id": self._parent_entity._validate
+            })
+            self._defaults.update({
+                "parent_id": None
+            })
+
+    def _handle_properties_default_value(self, attrs: Tuple) -> None:
+        self._defaults = {
+            key: value.default_value
+            for key, value in attrs.items()
+            if (isinstance(value, BaseProperty) and
+                value.default_value is not None)
+        }
+
+        self._defaults.update({
+            "id": None
+        })
+
+    def _handle_properties_validation(self, attrs: Tuple) -> None:
+        self._entity_types = {
+            key: value._validate
+            for key, value in attrs.items()
+            if isinstance(value, BaseProperty)
+        }
+
+        self._entity_types.update({
+            "id": self._partial_key._validate
+        })
+
+    def _mount_query(self) -> None:
         self.query = Query(
             partial_query=self._client._get_partial_query(
                 kind=self.kind
@@ -29,38 +90,30 @@ class EntityMetaClass(type):
             entity_instance=self
         )
 
-        self._partial_key = KeyField(
-            entity_kind=self.kind,
-            project=self._project,
-            namespace=self._namespace
-        )
-
-        self._entity_types = {
-            key: value._validate
-            for key, value in attrs.items()
-            if isinstance(value, BaseField)
-        }
-
-        self._entity_types.update({
-            "id": self._partial_key._validate
-        })
-
+    def _handle_required_properties(self, attrs: Tuple) -> None:
         self._required = [
             key for key, value in attrs.items()
-            if (isinstance(value, BaseField) and
+            if (isinstance(value, BaseProperty) and
                 value.required)
         ]
 
-        self._defaults = {
-            key: value.default_value
-            for key, value in attrs.items()
-            if (isinstance(value, BaseField) and
-                value.default_value is not None)
-        }
+    def _define_case_style(self, attrs: Tuple) -> None:
+        _case_style = attrs.get("__case_style__") or {}
+        self._convert_property_name = CaseStyle(
+            from_case=_case_style.get("from") or "snake_case",
+            to_case=_case_style.get("to") or "camel_case",
+        )
 
-        self._defaults.update({
-            "id": None
-        })
+    def _process_meta(self, attrs: Tuple) -> None:
+        _client_args = (
+            "project",
+            "namespace",
+            "credentials",
+            "client_info",
+            "client_options",
+            "_http",
+            "_use_grpc"
+        )
 
         if self._parent_entity:
             self._required.append("parent_id")
@@ -75,9 +128,7 @@ class EntityMetaClass(type):
 
 
 class Entity(metaclass=EntityMetaClass):
-    _client = DataStoreClient()
-
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self._data = {
             "id": None
         }
@@ -101,14 +152,7 @@ class Entity(metaclass=EntityMetaClass):
         if key in super().__getattribute__("_entity_types"):
             self._data[key] = self._entity_types[key](value)
 
-    @staticmethod
-    def _to_camel_case(key: str) -> str:
-        splited_key = key.split('_')
-        return splited_key[0] + ''.join(
-            [x.title() for x in splited_key[1:]]
-        )
-
-    def save(self):
+    def save(self) -> None:
         for required_property in self._required:
             if self._data[required_property] is None:
                 raise
@@ -137,27 +181,27 @@ class Entity(metaclass=EntityMetaClass):
             entity=self._mount_google_entity(entity)
         )
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         return {
             field: getattr(self, field)
             for field in self._data.keys()
-            if field in self._entity_fields
+            if field in self._entity_properties
         }
 
     @classmethod
     def _create_from_google_entity(cls, entity: GoogleEntity) -> "Entity":
-        _fields = cls._entity_fields
-        _fields_to_mount = set(cls._entity_fields) - set(["id", "parent_id"])
+        _properties = cls._entity_properties
+        _properties_to_mount = set(_properties) - set(["id", "parent_id"])
 
         instance = cls()
         setattr(instance, "id", entity.key.id)
 
-        if "parent_id" in _fields:
+        if "parent_id" in _properties:
             setattr(instance, "parent_id", entity.key.parent.id)
 
-        for field in _fields_to_mount:
-            setattr(instance, field, entity.get(
-                cls._convert_property_name(field)
+        for property in _properties_to_mount:
+            setattr(instance, property, entity.get(
+                cls._convert_property_name(property)
             ))
         return instance
 
