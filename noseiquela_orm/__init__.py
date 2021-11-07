@@ -1,8 +1,8 @@
 from .client import DataStoreClient
 from .entity import Entity
-from .fields import (ParentKey, BooleanField, FloatField,
-                     IntegerField, StringField, ListField, DictField,
-                     DateTimeField)
+from .properties import (ParentKey, BooleanProperty, FloatProperty,
+                     IntegerProperty, StringProperty, ListProperty, DictProperty,
+                     DateTimeProperty)
 from .query import Query, QueryResult
 
 __all__ = [
@@ -11,11 +11,11 @@ __all__ = [
     "ParentKey",
     "Query",
     "QueryResult"
-    "BooleanField",
-    "FloatField",
-    "IntegerField",
-    "StringField",
-    "ListField",
-    "DictField",
-    "DateTimeField"
+    "BooleanProperty",
+    "FloatProperty",
+    "IntegerProperty",
+    "StringProperty",
+    "ListProperty",
+    "DictProperty",
+    "DateTimeProperty"
 ]

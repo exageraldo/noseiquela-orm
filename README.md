@@ -6,24 +6,24 @@ Uma ideia de ORM no estilo do Django para manipular entidades do Google Datastor
 ###
 Montando seu modelo:
 ```python
-from noseiquela_orm import (Entity, ParentKey, BooleanField, FloatField,
-                 IntegerField, StringField, ListField, DictField,
-                 DateTimeField)
+from noseiquela_orm import (Entity, ParentKey, BooleanProperty, FloatProperty,
+                 IntegerProperty, StringProperty, ListProperty, DictProperty,
+                 DateTimeProperty)
 
 class Customer(Entity):
-    name = StringField(required=True)
-    age = IntegerField(required=True)
-    is_deleted = BooleanField(default=False, required=True)
+    name = StringProperty(required=True)
+    age = IntegerProperty(required=True)
+    is_deleted = BooleanProperty(default=False, required=True)
 
 class CustomerAddress(Entity):
     __kind__ = "Address"
     __parent__ = ParentKey(Customer, required=True)
 
-    number = IntegerField(required=True)
-    address_one = StringField(required=True)
-    address_two = StringField()
-    is_default = BooleanField(required=True)
-    is_deleted = BooleanField(default=False, required=True)
+    number = IntegerProperty(required=True)
+    address_one = StringProperty(required=True)
+    address_two = StringProperty()
+    is_default = BooleanProperty(required=True)
+    is_deleted = BooleanProperty(default=False, required=True)
 ```
 
 Criando entidades:

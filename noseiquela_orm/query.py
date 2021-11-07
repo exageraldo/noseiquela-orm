@@ -1,3 +1,6 @@
+from typing import Dict, Tuple
+
+
 class QueryResult:
     def __init__(self, query, entity_instance, limit=None, offset=0, retry=None, timeout=None) -> None:
         self.query = query
@@ -59,7 +62,7 @@ class Query:
         return QueryResult(_query, self.entity_instance)
 
 
-    def _process_filters(self, filter_dict):
+    def _process_filters(self, filter_dict: Dict) -> Tuple:
         OPERATIONS_TO_QUERY = {
             "eq": "=",
             "gt": ">",
