@@ -175,8 +175,8 @@ class KeyField(BaseKey):
 class ParentKey(BaseKey):
     def __init__(self, parent, project=None, namespace=None, required=False) -> None:
         self._parent_entity = parent
-        project = project or self._parent_entity._project
-        namespace = namespace or self._parent_entity._namespace
+        project = project or self._parent_entity.project
+        namespace = namespace or self._parent_entity.namespace
         super().__init__(project=project, namespace=namespace)
 
     @property
