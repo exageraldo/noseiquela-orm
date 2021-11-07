@@ -12,9 +12,6 @@ class EntityMetaClass(type):
         super().__init__(name, bases, attrs)
 
         self.kind = attrs.get("__kind__") or name
-        self._parent_entity = attrs.get("__parent__")
-        self._project = attrs.get("__project__") or self._client.project
-        self._namespace = attrs.get("__namespace__") or self._client.namespace
 
         self._process_meta(attrs)
         self._define_datastore_client()
@@ -47,7 +44,7 @@ class EntityMetaClass(type):
             **self._client_args
         )
 
-    def _handle_parent_key(self, attrs: Tuple) -> None:
+    def _handle_parent_key(self, attrs: Dict) -> None:
         self._parent_entity = attrs.get("__parent__")
 
         if self._parent_entity:
@@ -59,7 +56,7 @@ class EntityMetaClass(type):
                 "parent_id": None
             })
 
-    def _handle_properties_default_value(self, attrs: Tuple) -> None:
+    def _handle_properties_default_value(self, attrs: Dict) -> None:
         self._defaults = {
             key: value.default_value
             for key, value in attrs.items()
@@ -71,7 +68,7 @@ class EntityMetaClass(type):
             "id": None
         })
 
-    def _handle_properties_validation(self, attrs: Tuple) -> None:
+    def _handle_properties_validation(self, attrs: Dict) -> None:
         self._entity_types = {
             key: value._validate
             for key, value in attrs.items()
@@ -90,21 +87,21 @@ class EntityMetaClass(type):
             entity_instance=self
         )
 
-    def _handle_required_properties(self, attrs: Tuple) -> None:
+    def _handle_required_properties(self, attrs: Dict) -> None:
         self._required = [
             key for key, value in attrs.items()
             if (isinstance(value, BaseProperty) and
                 value.required)
         ]
 
-    def _define_case_style(self, attrs: Tuple) -> None:
+    def _define_case_style(self, attrs: Dict) -> None:
         _case_style = attrs.get("__case_style__") or {}
         self._convert_property_name = CaseStyle(
             from_case=_case_style.get("from") or "snake_case",
             to_case=_case_style.get("to") or "camel_case",
         )
 
-    def _process_meta(self, attrs: Tuple) -> None:
+    def _process_meta(self, attrs: Dict) -> None:
         _client_args = (
             "project",
             "namespace",
@@ -115,16 +112,13 @@ class EntityMetaClass(type):
             "_use_grpc"
         )
 
-        if self._parent_entity:
-            self._required.append("parent_id")
-            self._entity_types.update({
-                "parent_id": self._parent_entity._validate
-            })
-            self._defaults.update({
-                "parent_id": None
-            })
+        meta_class = attrs.get("Meta")
 
-        self._entity_fields = list(self._entity_types.keys())
+        self._client_args = {
+            arg: meta_attr
+            for arg in _client_args
+            if ((meta_attr := getattr(meta_class, arg, None)) is not None)
+        } if isinstance(meta_class, type) else {}
 
 
 class Entity(metaclass=EntityMetaClass):
@@ -178,7 +172,10 @@ class Entity(metaclass=EntityMetaClass):
             del entity["parent_id"]
 
         self.id = self._client.save(
-            entity=self._mount_google_entity(entity)
+            entity=self._client._mount_google_entity(
+                entity,
+                self._convert_property_name
+            )
         )
 
     def to_dict(self) -> Dict:
@@ -204,15 +201,6 @@ class Entity(metaclass=EntityMetaClass):
                 cls._convert_property_name(property)
             ))
         return instance
-
-    def _mount_google_entity(self, entity_dict: Dict) -> GoogleEntity:
-        entity_key = entity_dict.pop("id")
-        entity = GoogleEntity(entity_key)
-        for key, value in entity_dict.items():
-            key_name = self._convert_property_name(key)
-            entity[key_name] = value
-
-        return entity
 
     def __repr__(self) -> str:
         return (
