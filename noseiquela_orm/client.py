@@ -3,7 +3,7 @@ from functools import partial
 
 from google.cloud import datastore
 from google.cloud.datastore.client import _CLIENT_INFO
-from google.cloud.datastore.entity import Model as GoogleEntity
+from google.cloud.datastore.entity import Entity as GoogleEntity
 from google.auth.credentials import Credentials as GoogleCredentials
 from google.api_core.gapic_v1.client_info import ClientInfo as GoogleClientIngo
 from google.api_core.client_options import ClientOptions as GoogleClientOptions

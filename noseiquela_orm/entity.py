@@ -1,13 +1,14 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
-from google.cloud.datastore.entity import Model as GoogleEntity
+from google.cloud.datastore.entity import Entity as GoogleEntity
 
 from .client import DataStoreClient
 from .query import Query
-from .properties import BaseProperty, BaseKey, KeyProperty
+from .properties import BaseProperty
+from .key import KeyProperty
 from .utils.case_style import CaseStyle
 
 if TYPE_CHECKING:
-    from .properties import ParentKey
+    from .key import ParentKey
 
 
 class ModelMetaClass(type):
