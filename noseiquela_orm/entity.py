@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 from google.cloud.datastore.entity import Entity as GoogleEntity
 
 from .client import DataStoreClient
@@ -6,12 +6,15 @@ from .query import Query
 from .properties import BaseProperty, BaseKey, KeyProperty
 from .utils.case_style import CaseStyle
 
+if TYPE_CHECKING:
+    from .properties import ParentKey
+
 
 class EntityMetaClass(type):
     def __init__(self, name: str, bases: Tuple, attrs: Dict) -> None:
         super().__init__(name, bases, attrs)
 
-        self.kind = attrs.get("__kind__") or name
+        self.kind: str = attrs.get("__kind__") or name
 
         self._process_meta(attrs)
         self._define_datastore_client()
@@ -29,7 +32,7 @@ class EntityMetaClass(type):
         self._handle_properties_default_value(attrs)
         self._handle_parent_key(attrs)
 
-        self._entity_properties = list(self._entity_types.keys())
+        self._entity_properties: List[str] = list(self._entity_types.keys())
 
     @property
     def project(self) -> str:
@@ -45,7 +48,7 @@ class EntityMetaClass(type):
         )
 
     def _handle_parent_key(self, attrs: Dict) -> None:
-        self._parent_entity = attrs.get("__parent__")
+        self._parent_entity: Optional['ParentKey'] = attrs.get("__parent__")
 
         if self._parent_entity:
             self._required.append("parent_id")
@@ -57,7 +60,7 @@ class EntityMetaClass(type):
             })
 
     def _handle_properties_default_value(self, attrs: Dict) -> None:
-        self._defaults = {
+        self._defaults: Dict[str, Any] = {
             key: value.default_value
             for key, value in attrs.items()
             if (isinstance(value, BaseProperty) and
@@ -69,7 +72,7 @@ class EntityMetaClass(type):
         })
 
     def _handle_properties_validation(self, attrs: Dict) -> None:
-        self._entity_types = {
+        self._entity_types: Dict[str, Callable] = {
             key: value._validate
             for key, value in attrs.items()
             if isinstance(value, BaseProperty)
@@ -88,14 +91,14 @@ class EntityMetaClass(type):
         )
 
     def _handle_required_properties(self, attrs: Dict) -> None:
-        self._required = [
+        self._required: List[str] = [
             key for key, value in attrs.items()
             if (isinstance(value, BaseProperty) and
                 value.required)
         ]
 
     def _define_case_style(self, attrs: Dict) -> None:
-        _case_style = attrs.get("__case_style__") or {}
+        _case_style: Dict[str, str] = attrs.get("__case_style__") or {}
         self._convert_property_name = CaseStyle(
             from_case=_case_style.get("from") or "snake_case",
             to_case=_case_style.get("to") or "camel_case",
@@ -112,18 +115,21 @@ class EntityMetaClass(type):
             "_use_grpc"
         )
 
-        meta_class = attrs.get("Meta")
+        meta_class: Optional[type] = (
+            _meta if (_meta := attrs.get("Meta")) and isinstance(_meta, type)
+            else None
+        )
 
-        self._client_args = {
+        self._client_args: Dict[str, Any] = {
             arg: meta_attr
             for arg in _client_args
             if ((meta_attr := getattr(meta_class, arg, None)) is not None)
-        } if isinstance(meta_class, type) else {}
+        } if meta_class else {}
 
 
 class Entity(metaclass=EntityMetaClass):
     def __init__(self, **kwargs) -> None:
-        self._data = {
+        self._data: Dict[str, Any] = {
             "id": None
         }
 
@@ -178,7 +184,7 @@ class Entity(metaclass=EntityMetaClass):
             )
         )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             field: getattr(self, field)
             for field in self._data.keys()

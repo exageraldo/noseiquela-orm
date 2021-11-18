@@ -33,7 +33,7 @@ class DataStoreClient:
             _use_grpc=_use_grpc
         )
 
-    def _get_partial_query(self, kind: Union[str, int]) -> Callable:
+    def _get_partial_query(self, kind: Union[str, int]) -> partial:
         return partial(
             self._client.query,
             kind=kind
