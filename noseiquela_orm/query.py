@@ -3,13 +3,13 @@ from functools import partial
 from google.cloud.datastore.query import Query as GoogleQuery
 
 if TYPE_CHECKING:
-    from .entity import Entity
+    from .entity import Model
 
 class QueryResult:
     def __init__(
         self,
         query: GoogleQuery,
-        entity_instance: 'Entity',
+        entity_instance: 'Model',
         limit: Optional[int]=None,
         offset: Optional[int]=0,
         retry: Optional[int]=None,
@@ -22,7 +22,7 @@ class QueryResult:
         self.timeout = timeout
         self.entity_instance = entity_instance
 
-    def first(self) -> Optional['Entity']:
+    def first(self) -> Optional['Model']:
         result = list(self.query.fetch(
             limit=1,
             retry=self.retry,
@@ -32,7 +32,7 @@ class QueryResult:
             result[0]
         ) if result else None
 
-    def _get_query_result(self) -> Generator['Entity', None, None]:
+    def _get_query_result(self) -> Generator['Model', None, None]:
         for entity in self.query.fetch(
             limit=self.limit,
             offset=self.offset,
@@ -43,10 +43,10 @@ class QueryResult:
                 entity
             )
 
-    def __iter__(self) -> Generator['Entity', None, None]:
+    def __iter__(self) -> Generator['Model', None, None]:
         return self._get_query_result()
 
-    def __next__(self) -> Generator['Entity', None, None]:
+    def __next__(self) -> Generator['Model', None, None]:
         yield from self._get_query_result()
 
 
@@ -54,7 +54,7 @@ class Query:
     def __init__(
         self,
         partial_query: partial,
-        entity_instance: 'Entity',
+        entity_instance: 'Model',
     ) -> None:
         self.partial_query = partial_query
         self.entity_instance = entity_instance

@@ -1,5 +1,5 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
-from google.cloud.datastore.entity import Entity as GoogleEntity
+from google.cloud.datastore.entity import Model as GoogleEntity
 
 from .client import DataStoreClient
 from .query import Query
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from .properties import ParentKey
 
 
-class EntityMetaClass(type):
+class ModelMetaClass(type):
     def __init__(self, name: str, bases: Tuple, attrs: Dict) -> None:
         super().__init__(name, bases, attrs)
 
@@ -127,7 +127,7 @@ class EntityMetaClass(type):
         } if meta_class else {}
 
 
-class Entity(metaclass=EntityMetaClass):
+class Model(metaclass=ModelMetaClass):
     def __init__(self, **kwargs) -> None:
         self._data: Dict[str, Any] = {
             "id": None
@@ -192,7 +192,7 @@ class Entity(metaclass=EntityMetaClass):
         }
 
     @classmethod
-    def _create_from_google_entity(cls, entity: GoogleEntity) -> "Entity":
+    def _create_from_google_entity(cls, entity: GoogleEntity) -> "Model":
         _properties = cls._entity_properties
         _properties_to_mount = set(_properties) - set(["id", "parent_id"])
 
