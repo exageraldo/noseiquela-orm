@@ -13,9 +13,11 @@
 Defining models is similar to Django or Mongo-Engine:
 
 ```python
-from noseiquela_orm import (
-    Entity, ParentKey, BooleanProperty, FloatProperty,
-    IntegerProperty, StringProperty, ListProperty, DictProperty,
+from noseiquela_orm.entity import Model
+from noseiquela_orm.key import ParentKey
+from noseiquela_orm.properties import import (
+    BooleanProperty, FloatProperty, IntegerProperty,
+    StringProperty, ListProperty, DictProperty,
     DateTimeProperty
 )
 
@@ -78,5 +80,3 @@ default_addresses = [ad.to_dict() for ad in default_address_query]
 low_number_address_query = CustomerAddress.query.filter(number__lt=100)
 low_number_addresses = [ad.to_dict() for ad in low_number_address_query]
 ```
-<!-- Falar sobre os filtros -->
-<!-- Falar sobre os operadores (lt, gt, ...) -->
