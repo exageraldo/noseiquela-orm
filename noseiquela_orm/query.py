@@ -1,20 +1,21 @@
-from typing import Any, Dict, Tuple, Optional, Generator, TYPE_CHECKING
-from functools import partial
-from google.cloud.datastore.query import Query as GoogleQuery
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from functools import partial
+    from typing import Any, Dict, Tuple, Optional, Generator, Iterable
+    from google.cloud.datastore.query import Query as GoogleQuery
     from .entity import Model
 
 class QueryResult:
     def __init__(
         self,
-        query: GoogleQuery,
+        query: 'GoogleQuery',
         entity_instance: 'Model',
-        limit: Optional[int]=None,
-        offset: Optional[int]=0,
-        retry: Optional[int]=None,
-        timeout: Optional[int]=None
-    ) -> None:
+        limit: 'Optional[int]'=None,
+        offset: 'Optional[int]'=0,
+        retry: 'Optional[int]'=None,
+        timeout: 'Optional[int]'=None
+    ) -> 'None':
         self.query = query
         self.limit = limit
         self.offset = offset
@@ -22,51 +23,86 @@ class QueryResult:
         self.timeout = timeout
         self.entity_instance = entity_instance
 
-    def first(self) -> Optional['Model']:
-        result = list(self.query.fetch(
-            limit=1,
-            retry=self.retry,
-            timeout=self.timeout
-        ))
-        return self.entity_instance._create_from_google_entity(
-            result[0]
-        ) if result else None
-
-    def _get_query_result(self) -> Generator['Model', None, None]:
-        for entity in self.query.fetch(
+    def _get_fetch_iterator(self):
+        return self.query.fetch(
             limit=self.limit,
             offset=self.offset,
             retry=self.retry,
             timeout=self.timeout
-        ):
-            yield self.entity_instance._create_from_google_entity(
+        )
+
+    def __iter__(self) -> 'Iterable[Model]':
+        for entity in self._get_fetch_iterator():
+            yield self.entity_instance._mount_from_google_entity(
                 entity
             )
-
-    def __iter__(self) -> Generator['Model', None, None]:
-        return self._get_query_result()
-
-    def __next__(self) -> Generator['Model', None, None]:
-        yield from self._get_query_result()
 
 
 class Query:
     def __init__(
         self,
-        partial_query: partial,
+        partial_query: 'partial',
         entity_instance: 'Model',
-    ) -> None:
+    ) -> 'None':
         self.partial_query = partial_query
         self.entity_instance = entity_instance
 
-    def _mount_query(
+    def all(
         self,
-        filters: Optional[Tuple[str, str, Any]]=None,
-        order_by: Optional[Tuple[str]]=None,
-        projection: Optional[Tuple[str]]=None,
-        distinct_on: Optional[Tuple[str]]=None,
-        parent_id: Optional[Tuple[str]]=None
-    ) -> GoogleQuery:
+        order_by: 'Optional[Tuple[str]]'=None,
+        projection: 'Optional[Tuple[str]]'=None
+    ) -> 'QueryResult':
+        query = self.__mount_query(
+            order_by=order_by,
+            projection=projection
+        )
+        return QueryResult(query, self.entity_instance)
+
+    def first(
+        self,
+        order_by: 'Optional[Tuple[str]]'=None,
+        projection: 'Optional[Tuple[str]]'=None
+    ) -> 'Optional[Model]':
+        query = self.__mount_query(
+            order_by=order_by,
+            projection=projection
+        )
+        result_iterator = [
+            item for item in QueryResult(
+                query,
+                self.entity_instance,
+                limit=1
+            )._get_fetch_iterator()
+        ]
+        return self.entity_instance._mount_from_google_entity(
+            result_iterator[0]
+        ) if result_iterator else None
+
+    def filter(
+        self,
+        order_by: 'Optional[Tuple[str]]'=None,
+        projection: 'Optional[Tuple[str]]'=None,
+        distinct_on: 'Optional[Tuple[str]]'=None,
+        parent_id: 'Optional[Tuple[str]]'=None,
+        **kwargs
+    ) -> 'QueryResult':
+        query = self.__mount_query(
+            filters=self.__process_filters(kwargs),
+            parent_id=parent_id,
+            projection=projection,
+            order_by=order_by,
+            distinct_on=distinct_on,
+        )
+        return QueryResult(query, self.entity_instance)
+
+    def __mount_query(
+        self,
+        filters: 'Optional[Tuple[str, str, Any]]'=None,
+        order_by: 'Optional[Tuple[str]]'=None,
+        projection: 'Optional[Tuple[str]]'=None,
+        distinct_on: 'Optional[Tuple[str]]'=None,
+        parent_id: 'Optional[Tuple[str]]'=None
+    ) -> 'GoogleQuery':
         return self.partial_query(
             filters=(filters or ()),
             ancestor=(parent_id or None),
@@ -75,35 +111,7 @@ class Query:
             distinct_on=(distinct_on or ()),
         )
 
-    def all(
-        self,
-        order_by: Optional[Tuple[str]]=None,
-        projection: Optional[Tuple[str]]=None
-    ) -> 'QueryResult':
-        _query = self._mount_query(
-            order_by=order_by,
-            projection=projection
-        )
-        return QueryResult(_query, self.entity_instance)
-
-    def filter(
-        self,
-        order_by: Optional[Tuple[str]]=None,
-        projection: Optional[Tuple[str]]=None,
-        distinct_on: Optional[Tuple[str]]=None,
-        parent_id: Optional[Tuple[str]]=None,
-        **kwargs
-    ) -> 'QueryResult':
-        _query = self._mount_query(
-            filters=self._process_filters(kwargs),
-            parent_id=parent_id,
-            projection=projection,
-            order_by=order_by,
-            distinct_on=distinct_on,
-        )
-        return QueryResult(_query, self.entity_instance)
-
-    def _process_filters(self, filter_dict: Dict) -> Tuple[str, str, Any]:
+    def __process_filters(self, filter_dict: 'Dict') -> 'Tuple[str, str, Any]':
         OPERATIONS_TO_QUERY = {
             "eq": "=",
             "gt": ">",

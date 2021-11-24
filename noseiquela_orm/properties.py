@@ -1,22 +1,26 @@
 from datetime import datetime
 from decimal import Decimal
 from json import dumps
-from typing import Any, Callable, Iterable, Optional
+from typing import TYPE_CHECKING
 
 from dateutil.parser import parse
 from proto.datetime_helpers import DatetimeWithNanoseconds
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Iterable, Optional
+
 
 
 class BaseProperty:
     def __init__(
         self,
-        db_field: Optional[str]=None,
-        required: bool=False,
-        default: Optional[Any]=None,
-        choices: Optional[Iterable]=None,
-        validation: Optional[Callable]=None,
-        parse_value: bool=True
-    ) -> None:
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
+    ) -> 'None':
         self.db_field = db_field
         self.required = required
         self.default_value = default
@@ -24,7 +28,7 @@ class BaseProperty:
         self.validation = validation
         self.parse_value = parse_value
 
-    def _validate(self, value: Any) -> Any:
+    def _validate(self, value: 'Any') -> 'Any':
         value = self.default_value if value is None else value
         if not value and not self.required:
             return
@@ -50,7 +54,7 @@ class BooleanProperty(BaseProperty):
     truthy = ["True", "true", 1, "1", "yes"]
     falsy = ["False", "false", 0, "0", "no"]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = bool
         self._supported_types_map = {
@@ -59,7 +63,7 @@ class BooleanProperty(BaseProperty):
             bool: lambda x: x
         }
 
-    def _to_bool(self, value) -> bool:
+    def _to_bool(self, value: 'Any') -> 'bool':
         if value in self.truthy:
             return True
         elif value in self.falsy:
@@ -68,7 +72,7 @@ class BooleanProperty(BaseProperty):
 
 
 class DateTimeProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = datetime
         self._supported_types_map = {
@@ -79,7 +83,14 @@ class DateTimeProperty(BaseProperty):
 
 
 class FloatProperty(BaseProperty):
-    def __init__(self, force_string=False, min=None, max=None, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        force_string: 'bool'=False,
+        min: 'Optional[float]'=None,
+        max: 'Optional[float]'=None,
+        *args,
+        **kwargs
+    ) -> 'None':
         super().__init__(*args, **kwargs)
         self._force_string = force_string
         self._min_value = min
@@ -94,7 +105,13 @@ class FloatProperty(BaseProperty):
 
 
 class IntegerProperty(BaseProperty):
-    def __init__(self, min=None, max=None, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        min: 'Optional[int]'=None,
+        max: 'Optional[int]'=None,
+        *args,
+        **kwargs
+    ) -> 'None':
         super().__init__(*args, **kwargs)
         self._min_value = min
         self._max_value = max
@@ -107,7 +124,7 @@ class IntegerProperty(BaseProperty):
 
 
 class StringProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = str
         self._supported_types_map = {
@@ -120,7 +137,7 @@ class StringProperty(BaseProperty):
 
 
 class ListProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = list
         self._supported_types_map = {
@@ -129,7 +146,7 @@ class ListProperty(BaseProperty):
 
 
 class DictProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = dict
         self._supported_types_map = {
