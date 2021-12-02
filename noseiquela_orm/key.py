@@ -54,7 +54,7 @@ class ParentKey(BaseKey):
         parent,
         project: 'str'=None,
         namespace: 'str'=None,
-        required=False
+        required: 'bool'=False # WIP
     ) -> 'None':
         self._parent_entity = parent
         project = project or self._parent_entity.project
