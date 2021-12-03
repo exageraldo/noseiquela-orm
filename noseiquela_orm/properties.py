@@ -1,23 +1,26 @@
-from typing import Any, Callable, Iterable, Optional, Union
 from datetime import datetime
-from proto.datetime_helpers import DatetimeWithNanoseconds
-from google.cloud.datastore.key import Key as GoogleEntityKey
-
 from decimal import Decimal
 from json import dumps
+from typing import TYPE_CHECKING
+
 from dateutil.parser import parse
+from proto.datetime_helpers import DatetimeWithNanoseconds
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Iterable, Optional
+
 
 
 class BaseProperty:
     def __init__(
         self,
-        db_field: Optional[str]=None,
-        required: bool=False,
-        default: Optional[Any]=None,
-        choices: Optional[Iterable]=None,
-        validation: Optional[Callable]=None,
-        parse_value: bool=True
-    ) -> None:
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
+    ) -> 'None':
         self.db_field = db_field
         self.required = required
         self.default_value = default
@@ -25,7 +28,7 @@ class BaseProperty:
         self.validation = validation
         self.parse_value = parse_value
 
-    def _validate(self, value: Any) -> Any:
+    def _validate(self, value: 'Any') -> 'Any':
         value = self.default_value if value is None else value
         if not value and not self.required:
             return
@@ -51,7 +54,7 @@ class BooleanProperty(BaseProperty):
     truthy = ["True", "true", 1, "1", "yes"]
     falsy = ["False", "false", 0, "0", "no"]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = bool
         self._supported_types_map = {
@@ -60,7 +63,7 @@ class BooleanProperty(BaseProperty):
             bool: lambda x: x
         }
 
-    def _to_bool(self, value) -> bool:
+    def _to_bool(self, value: 'Any') -> 'bool':
         if value in self.truthy:
             return True
         elif value in self.falsy:
@@ -69,7 +72,7 @@ class BooleanProperty(BaseProperty):
 
 
 class DateTimeProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = datetime
         self._supported_types_map = {
@@ -80,7 +83,14 @@ class DateTimeProperty(BaseProperty):
 
 
 class FloatProperty(BaseProperty):
-    def __init__(self, force_string=False, min=None, max=None, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        force_string: 'bool'=False,
+        min: 'Optional[float]'=None,
+        max: 'Optional[float]'=None,
+        *args,
+        **kwargs
+    ) -> 'None':
         super().__init__(*args, **kwargs)
         self._force_string = force_string
         self._min_value = min
@@ -95,7 +105,13 @@ class FloatProperty(BaseProperty):
 
 
 class IntegerProperty(BaseProperty):
-    def __init__(self, min=None, max=None, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        min: 'Optional[int]'=None,
+        max: 'Optional[int]'=None,
+        *args,
+        **kwargs
+    ) -> 'None':
         super().__init__(*args, **kwargs)
         self._min_value = min
         self._max_value = max
@@ -108,7 +124,7 @@ class IntegerProperty(BaseProperty):
 
 
 class StringProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = str
         self._supported_types_map = {
@@ -121,7 +137,7 @@ class StringProperty(BaseProperty):
 
 
 class ListProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = list
         self._supported_types_map = {
@@ -130,55 +146,9 @@ class ListProperty(BaseProperty):
 
 
 class DictProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> 'None':
         super().__init__(*args, **kwargs)
         self._default_type = dict
         self._supported_types_map = {
             dict: lambda x: x
         }
-
-
-class BaseKey:
-    def __init__(self, project: str, namespace: str) -> None:
-        self.project = project
-        self.namespace = namespace
-        self._supported_types_map = {
-            str: lambda x: x,
-            int: lambda x: x,
-        }
-
-    def _validate(self, value: Union[str, int]) -> Union[str, int]:
-        _supported_types = tuple(self._supported_types_map.keys())
-        if not isinstance(value, _supported_types):
-            raise
-
-        return value
-
-    def get_complete_key(self, id_or_name: Union[str, int]) -> GoogleEntityKey:
-        return self._partial_key.completed_key(id_or_name)
-
-    def _mount_partial_key(self, parent_key: Optional[GoogleEntityKey]=None) -> GoogleEntityKey:
-        return GoogleEntityKey(
-            self.kind,
-            project=self.project,
-            namespace=self.namespace,
-            parent=parent_key
-        )
-
-
-class KeyProperty(BaseKey):
-    def __init__(self, entity_kind: str, project: Optional[str]=None, namespace: Optional[str]=None) -> None:
-        super().__init__(project=project, namespace=namespace)
-        self.kind = entity_kind
-
-
-class ParentKey(BaseKey):
-    def __init__(self, parent, project: str=None, namespace: str=None, required=False) -> None:
-        self._parent_entity = parent
-        project = project or self._parent_entity.project
-        namespace = namespace or self._parent_entity.namespace
-        super().__init__(project=project, namespace=namespace)
-
-    @property
-    def kind(self) -> str:
-        return self._parent_entity.kind
