@@ -1,51 +1,61 @@
 ## No SeiQueLa ORM
 > IN DEVELOPMENT
 
-[🇧🇷 Documentação em Português](link.para/arquivo-da-traducao)
+[🇧🇷 Documentação em Português](/README.pt-br.md)
 
-**No** **S***ei***Q***ue***L***a* is a small and expressive ORM (Object Relational Mapper) to interact with Google Datastore inspired by Django and Mongo-Engine.
+**No** **S***ei***Q***ue***L***a* is a small and expressive ORM (Object Relational Mapper) to interact with Google Datastore inspired by Django, Mongo-Engine and Peewee.
 
-- python 3.8+
-- support many projects/namespaces
+## Requirements
+- [Google Cloud](https://cloud.google.com/) credentials
+- [Python>=3.8](https://www.python.org/downloads/)
 
-### Examples
+## Installing
 
-Defining models is similar to Django or Mongo-Engine:
+The library can be installed using pip:
+
+`pip install noseiquela_orm`
+
+## Usage
+
+Creating model classes:
 
 ```python
 from noseiquela_orm.entity import Model
-from noseiquela_orm.key import ParentKey
-from noseiquela_orm.properties import import (
-    BooleanProperty, FloatProperty, IntegerProperty,
-    StringProperty, ListProperty, DictProperty,
-    DateTimeProperty
-)
+from noseiquela_orm.key import Key, ParentKey
+from noseiquela_orm import properties
 
 
-class Customer(Entity):
-    name = StringProperty(required=True)
-    age = IntegerProperty(required=True)
-    is_deleted = BooleanProperty(default=False, required=True)
+class Customer(Model):
+    name = properties.StringProperty(required=True)
+    age = properties.IntegerProperty(required=True)
+    is_deleted = properties.BooleanProperty(default=False, required=True)
 
 
-class CustomerAddress(Entity):
+class CustomerAddress(Model):
     __kind__ = "Address"
-    __parent__ = ParentKey(Customer, required=True)
+    __parent__ = properties.ParentKey(Customer, required=True)
 
-    number = IntegerProperty(required=True)
-    address_one = StringProperty(required=True)
-    address_two = StringProperty()
-    is_default = BooleanProperty(required=True)
-    is_deleted = BooleanProperty(default=False, required=True)
-
-    class Meta:
-        namespace = "some-namespace"
-        project = "other-project"
+    number = properties.IntegerProperty(required=True)
+    address_one = properties.StringProperty(required=True)
+    address_two = properties.StringProperty()
+    is_default = properties.BooleanProperty(required=True)
+    is_deleted = properties.BooleanProperty(default=False, required=True)
 ```
 
-If `Meta` class is not defined, the default values from service account are used.
+In case the project name, namespace (or any other parameter of the [`google.cloud.datastore.Client`](https://googleapis.dev/python/datastore/latest/client.html)) needs to be changed, simply create a `Meta` class inside the template with the desired information.
 
-Creating some entities:
+```python
+class Product(Model):
+    quantity = properties.IntegerProperty(required=True)
+    name = properties.StringProperty(required=True)
+    value = properties.FloatProperty(required=True)
+
+    class Meta:
+        namespace = "production"
+        project = "products"
+```
+
+Adding new entities:
 
 ```python
 new_customer = Customer(
@@ -65,18 +75,33 @@ new_address = CustomerAddress(
 new_address.save()
 ```
 
-When a new entity is created, its `id` is assigned only after it is saved in the database.
-
-Making some queries:
+Query on database:
 
 ```python
-all_address_query = CustomerAddress.query.all()
-first_address = all_address_query.first()
-all_addresses = [ad.to_dict() for ad in all_address_query]
+customer = Customer.query.filter(name="Geraldo Castro").first()
+customer_address = Customer.query.filter(parend_id=customer.id)
 
-default_address_query = CustomerAddress.query.filter(is_default=True)
-default_addresses = [ad.to_dict() for ad in default_address_query]
+less_than_or_eq_29 = Customer.query.filter(age__le=29) # age <= 29
+more_than_30 = Customer.query.filter(age__gt=30) # age > 30
 
-low_number_address_query = CustomerAddress.query.filter(number__lt=100)
-low_number_addresses = [ad.to_dict() for ad in low_number_address_query]
+all_customers = [
+    customer.to_dict()
+    for customer in Customer.query.all()
+]
 ```
+
+## Authentication
+
+The library uses the standard way of authenticating Google libraries ([google-auth-library-python](https://github.com/googleapis/google-auth-library-python)).
+
+The search for credentials happens in the following order:
+
+1. If the environment variable `GOOGLE_APPLICATION_CREDENTIALS` is set to a valid service account path.
+
+2. If the `Google Cloud SDK` is installed and has the credentials of the application to be used, these will be loaded.
+
+3. If the application is running in the `App Engine standard environment` (first generation), then the credentials and project ID are taken from the `App Identity Service`.
+
+4. If the application is running in `Compute Engine`, `Cloud Run`, `App Engine flexible environment` or `App Engine standard environment` (second generation), then the credentials and project ID are taken from the `Metadata Service`.
+
+More details at [this link](https://github.com/googleapis/google-auth-library-python/blob/main/google/auth/_default.py#L356).
