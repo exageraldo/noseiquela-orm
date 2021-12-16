@@ -7,9 +7,6 @@ setup(
     install_requires=[
         "python-dateutil~=2.8",
         "google-cloud-datastore~=2.3",
-        "google-api-core~=2.1",
         "google-auth~=2.3",
-        "google-cloud-core~=2.1",
-        "googleapis-common-protos~=1.53"
     ]
 )
