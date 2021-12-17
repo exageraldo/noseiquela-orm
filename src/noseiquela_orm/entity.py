@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING
+from datetime import datetime
 
 from .client import DatastoreClient
 from .query import Query
-from .properties import BaseProperty
+from .properties import BaseProperty, DateTimeProperty
 from .key import KeyProperty
 from .utils.case_style import CaseStyle
 
@@ -32,6 +33,7 @@ class ModelMetaClass(type):
         self.__mount_property_types_validation(attrs)
         self.__handle_required_properties(attrs)
         self.__preload_properties_with_default_value(attrs)
+        self.__handle_auto_now_values(attrs)
         self.__handle_parent_key(attrs)
 
         self._entity_properties: 'List[str]' = list(self._entity_types.keys())
@@ -115,6 +117,13 @@ class ModelMetaClass(type):
                 value.required)
         ]
 
+    def __handle_auto_now_values(self, attrs: 'Dict') -> None:
+        self._auto_now: 'List[str]' = [
+            key for key, value in attrs.items()
+            if (isinstance(value, DateTimeProperty) and
+                value.auto_now)
+        ]
+
     def __preload_properties_with_default_value(self, attrs: 'Dict') -> 'None':
         self._defaults: 'Dict[str, Any]' = {
             key: value.default_value
@@ -144,10 +153,11 @@ class ModelMetaClass(type):
 
 class Model(metaclass=ModelMetaClass):
     def __init__(self, **kwargs) -> 'None':
-        self._data = {
+        self._data.update({
             key: value
             for key, value in kwargs.items()
-        }
+            if key in self._entity_types
+        })
 
     def __getattribute__(self, key: 'str') -> 'Any':
         data = super().__getattribute__("_data")
@@ -164,9 +174,13 @@ class Model(metaclass=ModelMetaClass):
             super().__setattr__(key, value)
 
     def save(self) -> 'None':
-        for required_property in self._required:
+        for required_property in (set(self._required) - set(self._auto_now)):
             if self._data[required_property] is None:
                 raise
+
+        now = datetime.now()
+        for auto_now_property in self._auto_now:
+            self._data[auto_now_property] = now
 
         entity = self.to_dict()
         parent_key = None

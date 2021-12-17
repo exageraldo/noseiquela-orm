@@ -25,7 +25,7 @@ class CaseStyle:
                     string_value
                 )
             ],
-            "pascal_case": lambda string_value: string_value.split('-'),
+            "kebab_case": lambda string_value: string_value.split('-'),
             "snake_case": lambda string_value: string_value.split('_')
         }
 
@@ -41,7 +41,7 @@ class CaseStyle:
             "pascal_case": lambda key_list: ''.join(
                 [x.title() for x in key_list]
             ),
-            "pascal_case": lambda key_list: '-'.join(
+            "kebab_case": lambda key_list: '-'.join(
                 [x.lower() for x in key_list]
             ),
             "snake_case": lambda key_list: '_'.join(
