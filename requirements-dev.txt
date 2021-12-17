@@ -1,0 +1,5 @@
+python-dateutil~=2.8
+google-cloud-datastore~=2.3
+google-auth~=2.3
+
+pytest~=6.2

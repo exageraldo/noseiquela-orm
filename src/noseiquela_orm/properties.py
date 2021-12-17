@@ -54,8 +54,23 @@ class BooleanProperty(BaseProperty):
     truthy = ["True", "true", 1, "1", "yes"]
     falsy = ["False", "false", 0, "0", "no"]
 
-    def __init__(self, *args, **kwargs) -> 'None':
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
+    ) -> 'None':
+        super().__init__(
+            db_field=db_field,
+            required=required,
+            default=default,
+            choices=choices,
+            validation=validation,
+            parse_value=parse_value
+        )
         self._default_type = bool
         self._supported_types_map = {
             str: self._to_bool,
@@ -72,8 +87,25 @@ class BooleanProperty(BaseProperty):
 
 
 class DateTimeProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> 'None':
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        auto_now: 'bool'=False,
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
+    ) -> 'None':
+        super().__init__(
+            db_field=db_field,
+            required=required,
+            default=default,
+            choices=choices,
+            validation=validation,
+            parse_value=parse_value
+        )
+        self.auto_now = auto_now
         self._default_type = datetime
         self._supported_types_map = {
             str: parse,
@@ -88,10 +120,21 @@ class FloatProperty(BaseProperty):
         force_string: 'bool'=False,
         min: 'Optional[float]'=None,
         max: 'Optional[float]'=None,
-        *args,
-        **kwargs
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
     ) -> 'None':
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            db_field=db_field,
+            required=required,
+            default=default,
+            choices=choices,
+            validation=validation,
+            parse_value=parse_value
+        )
         self._force_string = force_string
         self._min_value = min
         self._max_value = max
@@ -109,10 +152,21 @@ class IntegerProperty(BaseProperty):
         self,
         min: 'Optional[int]'=None,
         max: 'Optional[int]'=None,
-        *args,
-        **kwargs
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
     ) -> 'None':
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            db_field=db_field,
+            required=required,
+            default=default,
+            choices=choices,
+            validation=validation,
+            parse_value=parse_value
+        )
         self._min_value = min
         self._max_value = max
         self._default_type = int
@@ -124,8 +178,23 @@ class IntegerProperty(BaseProperty):
 
 
 class StringProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> 'None':
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
+    ) -> 'None':
+        super().__init__(
+            db_field=db_field,
+            required=required,
+            default=default,
+            choices=choices,
+            validation=validation,
+            parse_value=parse_value
+        )
         self._default_type = str
         self._supported_types_map = {
             str: lambda x: x,
@@ -137,8 +206,23 @@ class StringProperty(BaseProperty):
 
 
 class ListProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> 'None':
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
+    ) -> 'None':
+        super().__init__(
+            db_field=db_field,
+            required=required,
+            default=default,
+            choices=choices,
+            validation=validation,
+            parse_value=parse_value
+        )
         self._default_type = list
         self._supported_types_map = {
             list: lambda x: x
@@ -146,8 +230,23 @@ class ListProperty(BaseProperty):
 
 
 class DictProperty(BaseProperty):
-    def __init__(self, *args, **kwargs) -> 'None':
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        db_field: 'Optional[str]'=None,
+        required: 'bool'=False,
+        default: 'Optional[Any]'=None,
+        choices: 'Optional[Iterable]'=None,
+        validation: 'Optional[Callable]'=None,
+        parse_value: 'bool'=True
+    ) -> 'None':
+        super().__init__(
+            db_field=db_field,
+            required=required,
+            default=default,
+            choices=choices,
+            validation=validation,
+            parse_value=parse_value
+        )
         self._default_type = dict
         self._supported_types_map = {
             dict: lambda x: x

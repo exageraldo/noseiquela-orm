@@ -60,10 +60,14 @@ class Query:
 
     def first(
         self,
+        parent_id: 'Optional[Tuple[str]]'=None,
         order_by: 'Optional[Tuple[str]]'=None,
-        projection: 'Optional[Tuple[str]]'=None
+        projection: 'Optional[Tuple[str]]'=None,
+        **kwargs
     ) -> 'Optional[Model]':
         query = self.__mount_query(
+            filters=self.__process_filters(kwargs),
+            parent_id=parent_id,
             order_by=order_by,
             projection=projection
         )
