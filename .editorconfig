@@ -23,3 +23,6 @@ insert_final_newline = ignore
 [Makefile]
 indent_style = tab
 insert_final_newline = false
+
+[*.yml]
+indent_size = 2

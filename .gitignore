@@ -1,5 +1,10 @@
 **/.service-account.json
+**/service-account.json
 **/.history
-__pycache__/
+**/__pycache__
 *.py[cod]
 *$py.class
+**/*.egg-info
+**/dist
+**/.coverage
+**/htmlcov

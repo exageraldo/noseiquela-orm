@@ -23,16 +23,13 @@ class QueryResult:
         self.timeout = timeout
         self.entity_instance = entity_instance
 
-    def _get_fetch_iterator(self):
-        return self.query.fetch(
+    def __iter__(self) -> 'Iterable[Model]':
+        for entity in self.query.fetch(
             limit=self.limit,
             offset=self.offset,
             retry=self.retry,
             timeout=self.timeout
-        )
-
-    def __iter__(self) -> 'Iterable[Model]':
-        for entity in self._get_fetch_iterator():
+        ):
             yield self.entity_instance._mount_from_google_entity(
                 entity
             )
@@ -42,10 +39,12 @@ class Query:
     def __init__(
         self,
         partial_query: 'partial',
-        entity_instance: 'Model',
     ) -> 'None':
         self.partial_query = partial_query
-        self.entity_instance = entity_instance
+
+    def __get__(self, owner_instance, owner_class):
+        self.entity_instance = owner_class
+        return self
 
     def all(
         self,
@@ -72,11 +71,9 @@ class Query:
                 query,
                 self.entity_instance,
                 limit=1
-            )._get_fetch_iterator()
+            )
         ]
-        return self.entity_instance._mount_from_google_entity(
-            result_iterator[0]
-        ) if result_iterator else None
+        return result_iterator[0] if result_iterator else None
 
     def filter(
         self,
@@ -127,6 +124,6 @@ class Query:
             _key = processed_key[0]
             _operation = processed_key[1] if len(processed_key) > 1 else DEFAULT_QUERY_OPERATION
             _operation = OPERATIONS_TO_QUERY[_operation]
-            result.append((self.entity_instance._convert_property_name(_key), _operation, value))
+            result.append((self.entity_instance._case_style(_key), _operation, value))
 
         return tuple(result)

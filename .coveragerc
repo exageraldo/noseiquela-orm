@@ -1,0 +1,5 @@
+[report]
+skip_empty = true
+exclude_lines =
+    if TYPE_CHECKING:
+
