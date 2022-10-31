@@ -16,7 +16,9 @@
 
 A biblioteca pode ser baixada usando o pip:
 
-`pip install noseiquela_orm`
+```bash
+$ pip install noseiquela_orm
+```
 
 ## Modo de uso
 
@@ -24,8 +26,8 @@ Criando as classes de modelo:
 
 ```python
 from noseiquela_orm.entity import Model
-from noseiquela_orm.key import Key, ParentKey
-from noseiquela_orm import properties
+from noseiquela_orm.types.key import KeyProperty
+from noseiquela_orm.types import properties
 
 
 class Customer(Model):
@@ -36,13 +38,13 @@ class Customer(Model):
 
 class CustomerAddress(Model):
     __kind__ = "Address"
-    __parent__ = properties.ParentKey(Customer, required=True)
+    id = KeyProperty(parent='Customer')
 
     number = properties.IntegerProperty(required=True)
     address_one = properties.StringProperty(required=True)
     address_two = properties.StringProperty()
-    is_default = properties.BooleanProperty(required=True)
-    is_deleted = properties.BooleanProperty(default=False, required=True)
+    is_default = properties.BooleanProperty(required=True, default=True)
+    is_deleted = properties.BooleanProperty(required=True, default=False)
 ```
 
 Caso precise mudar o projeto, namespace (ou qualquer outro parametro do [`google.cloud.datastore.Client`](https://googleapis.dev/python/datastore/latest/client.html)), basta criar uma classe `Meta` dentro do modelo com as informações desejadas.
@@ -88,7 +90,7 @@ less_than_or_eq_29 = Customer.query.filter(age__le=29) # age <= 29
 more_than_30 = Customer.query.filter(age__gt=30) # age > 30
 
 all_customers = [
-    customer.to_dict()
+    customer.as_dict()
     for customer in Customer.query.all()
 ]
 ```
