@@ -30,6 +30,10 @@ docker.run.viewer:
 docker.run: docker.build
 	docker-compose up
 
+.PHONY: mypy
+mypy:
+	mypy src/ --ignore-missing-imports
+
 .PHONY: clear
 clear:
 	@rm -rf build
