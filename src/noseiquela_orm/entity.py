@@ -1,54 +1,53 @@
+import inspect
 from typing import TYPE_CHECKING
 
-from .client import DatastoreClient
 from .query import Query
-from .properties import BaseProperty
-from .key import KeyProperty
+from .types.properties import BaseProperty
 from .utils.case_style import CaseStyle
 
+
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional, Tuple
-    from google.cloud.datastore.entity import Entity as GoogleEntity
-    from .key import ParentKey
+    from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+    from google.cloud.datastore.entity import Entity as GEntity
+    from google.cloud.datastore.key import Key as GKey
 
 
-class ModelMetaClass(type):
-    def __init__(self, name: 'str', bases: 'Tuple', attrs: 'Dict') -> 'None':
-        super().__init__(name, bases, attrs)
+class ModelMeta(type):
+    def __new__(cls, name: 'str', bases: 'Tuple', attrs: 'Dict'):
+        attrs["kind"] = attrs.pop("__kind__", name)
 
-        self.kind: 'str' = attrs.get("__kind__") or name
+        if "id" not in attrs:
+            from .types.key import KeyProperty
+            attrs["id"] = KeyProperty()
 
-        self.__process_meta_class(attrs)
-        self.__define_datastore_client()
-        self.__define_properties_case_style(attrs)
-        self.__mount_query_obj()
+        meta_class = None
+        if "Meta" in attrs and inspect.isclass((attrs["Meta"])):
+            meta_class = attrs.pop("Meta")
 
-        self._partial_key = KeyProperty(
-            entity_kind=self.kind,
-            project=self.project,
-            namespace=self.namespace
+        ds_client_args = (
+            {} if meta_class is None
+            else cls.__get_client_args_from_meta(meta_class)
         )
 
-        self.__mount_property_types_validation(attrs)
-        self.__handle_required_properties(attrs)
-        self.__preload_properties_with_default_value(attrs)
-        self.__handle_parent_key(attrs)
+        from .client import DatastoreClient
+        ds_client = DatastoreClient(**ds_client_args)
 
-        self._entity_properties: 'List[str]' = list(self._entity_types.keys())
-        self._data: 'Dict[str, Any]' = {
-            key: value
-            for key, value in self._defaults.items()
-        }
+        attrs['_client'] = ds_client
+        attrs['project'] = ds_client.project
+        attrs['namespace'] = ds_client.namespace
 
-    @property
-    def project(self) -> 'str':
-        return self._client.project
+        case_style = {
+            "from_case": "snake_case",
+            "to_case": "snake_case",
+        } | (attrs.pop("__case_style__", {}))
 
-    @property
-    def namespace(self) -> 'str':
-        return self._client.namespace
+        attrs['_case_style'] = CaseStyle(**case_style)
 
-    def __process_meta_class(self, attrs: 'Dict') -> 'None':
+        return super().__new__(cls, name, bases, attrs)
+
+    @classmethod
+    def __get_client_args_from_meta(cls, meta_class: 'type') -> 'Dict[str, Any]':
         client_args = (
             "project",
             "namespace",
@@ -59,164 +58,139 @@ class ModelMetaClass(type):
             "_use_grpc"
         )
 
-        meta_class: 'Optional[type]' = (
-            _meta if (_meta := attrs.get("Meta")) and isinstance(_meta, type)
+        return {
+            arg: meta_attr
+            for arg in client_args
+            if ((meta_attr:=getattr(meta_class, arg, None)) is not None)
+        }
+
+
+class Model(metaclass=ModelMeta):
+    _model_registry = {}
+
+    def __init__(self, **kwargs) -> None:
+        unmapped_props = set(kwargs.keys()) - set(self._all_props)
+
+        if unmapped_props:
+            raise Exception("Propriedades nao mapeadas foram passadas.")
+
+        data = self._generate_default_dict() | kwargs
+
+        for prop, value in data.items():
+            setattr(self, prop, value)
+
+    def __init_subclass__(cls):
+        cls._model_registry[cls.__name__] = cls
+
+        _all_props = getattr(cls, "_all_props", [])
+        _default_props = getattr(cls, "_default_props", {})
+        _required_props = getattr(cls, "_required_props", [])
+
+        for prop_name, prop in vars(cls).items():
+            if not isinstance(prop, BaseProperty):
+                continue
+
+            _all_props.append(prop_name)
+
+            if prop._is_required:
+                _required_props.append(prop_name)
+
+            if prop._default_value is not None:
+                default = prop._generate_default_value
+                _default_props[prop._property_name] = default
+
+
+        setattr(cls, "_all_props", _all_props)
+        setattr(cls, "_default_props", _default_props)
+        setattr(cls, "_required_props", _required_props)
+        setattr(cls, "query", Query(
+            partial_query=cls._client.get_partial_query(
+                kind=cls.kind
+            )
+        ))
+
+    def __setattr__(self, key: 'str', value: 'Any') -> 'None':
+        if key not in self._all_props:
+            raise Exception("Nao pode atribuir!!!")
+        super().__setattr__(key, value)
+
+    def _mount_entity_g_key(self) -> 'GKey':
+        has_parent = hasattr(self, "parent_id")
+        if has_parent and not self.parent_id:
+            raise Exception("'parent_id' must be 'str' or 'int'")
+
+        parent_key = (
+            self._parent_complete_g_key(self.parent_id)
+            if has_parent
             else None
         )
 
-        get_from_meta = lambda arg: (
-            getattr(meta_class, arg, None)
-            if meta_class else None
-        )
-
-        self._allow_inheritance: 'Optional[bool]' = get_from_meta('allow_inheritance') # WIP
-
-        self.__ds_client_args: 'Dict[str, Any]' = {
-            arg: meta_attr
-            for arg in client_args
-            if ((meta_attr := get_from_meta(arg)) is not None)
-        } if meta_class else {}
-
-    def __define_datastore_client(self) -> 'None':
-        self._client = DatastoreClient(
-            **self.__ds_client_args
-        )
-
-    def __define_properties_case_style(self, attrs: 'Dict') -> 'None':
-        case_style: 'Dict[str, str]' = attrs.get("__case_style__") or {}
-        self._convert_property_name = CaseStyle(
-            from_case=case_style.get("from") or "snake_case",
-            to_case=case_style.get("to") or "camel_case",
-        )
-
-    def __mount_query_obj(self) -> 'None':
-        self.query = Query(
-            partial_query=self._client.get_partial_query(
-                kind=self.kind
-            ),
-            entity_instance=self
-        )
-
-    def __mount_property_types_validation(self, attrs: 'Dict') -> 'None':
-        self._entity_types: 'Dict[str, Callable]' = {
-            key: value._validate
-            for key, value in attrs.items()
-            if isinstance(value, BaseProperty)
-        }
-
-        self._entity_types.update({
-            "id": self._partial_key._validate
-        })
-
-    def __handle_required_properties(self, attrs: 'Dict') -> 'None':
-        self._required: 'List[str]' = [
-            key for key, value in attrs.items()
-            if (isinstance(value, BaseProperty) and
-                value.required)
-        ]
-
-    def __preload_properties_with_default_value(self, attrs: 'Dict') -> 'None':
-        self._defaults: 'Dict[str, Any]' = {
-            key: value.default_value
-            for key, value in attrs.items()
-            if (isinstance(value, BaseProperty) and
-                value.default_value is not None)
-        }
-
-        self._defaults.update({
-            "id": None
-        })
-
-    def __handle_parent_key(self, attrs: 'Dict') -> 'None':
-        self._parent_entity: 'Optional[ParentKey]' = attrs.get("__parent__") or None
-
-        if not self._parent_entity:
-            return
-
-        self._required.append("parent_id")
-        self._entity_types.update({
-            "parent_id": self._parent_entity._validate
-        })
-        self._defaults.update({
-            "parent_id": None
-        })
-
-
-class Model(metaclass=ModelMetaClass):
-    def __init__(self, **kwargs) -> 'None':
-        self._data = {
-            key: value
-            for key, value in kwargs.items()
-        }
-
-    def __getattribute__(self, key: 'str') -> 'Any':
-        data = super().__getattribute__("_data")
-        if key in data:
-            return data[key]
-        if key in super().__getattribute__("_entity_types"):
-            return
-        return super().__getattribute__(key)
-
-    def __setattr__(self, key: 'str', value: 'Any') -> 'None':
-        if key in super().__getattribute__("_entity_types"):
-            self._data[key] = self._entity_types[key](value)
-        else:
-            super().__setattr__(key, value)
-
-    def save(self) -> 'None':
-        for required_property in self._required:
-            if self._data[required_property] is None:
-                raise
-
-        entity = self.to_dict()
-        parent_key = None
-        if "parent_id" in entity.keys():
-            partial_parent_key = self._parent_entity._mount_partial_key()
-            parent_key = partial_parent_key.completed_key(
-                entity["parent_id"]
-            )
-
-        entity_partial_key = self._partial_key._mount_partial_key(
-            parent_key=parent_key
-        )
-
-        if entity["id"] is not None:
-            entity["id"] = entity_partial_key.completed_key(entity["id"])
-        else:
-            entity["id"] = entity_partial_key
-
-        if "parent_id" in entity.keys():
-            del entity["parent_id"]
-
-        self.id = self._client.save(
-            entity=self._client.mount_google_entity_from_dict(
-                entity,
-                self._convert_property_name
-            )
-        )
+        if self.id is None:
+            return self._partial_g_key(parent_key)
+        return self._complete_g_key(self.id, parent_key)
 
     @classmethod
-    def _mount_from_google_entity(cls, entity: 'GoogleEntity') -> 'Model':
-        properties = cls._entity_properties
-        properties_to_mount = set(properties) - set(["id", "parent_id"])
-
-        model_args = {"id": entity.key.id}
-
-        if "parent_id" in properties:
-            model_args["parent_id"] = entity.key.parent.id
-
-        for property in properties_to_mount:
-            model_args[property] = entity.get(
-                cls._convert_property_name(property)
-            )
-        return cls(**model_args)
-
-    def to_dict(self) -> 'Dict[str, Any]':
+    def _generate_default_dict(cls) -> 'Dict[str, Any]':
         return {
-            field: getattr(self, field)
-            for field in self._data.keys()
-            if field in self._entity_properties
+            prop: gen_default()
+            for prop, gen_default in cls._default_props.items()
         }
+
+    @classmethod
+    def _mount_from_google_entity(cls, entity: 'GEntity') -> 'Model':
+        data = cls._generate_default_dict() | {"id": entity.key.id_or_name}
+
+        if hasattr(cls, "parent_id") and entity.key.parent:
+            data["parent_id"] = entity.key.parent.id_or_name
+
+        props_to_mount = [
+            prop for prop in cls._all_props
+            if prop not in ["id"]
+        ]
+
+        for property in props_to_mount:
+            data[property] = entity.get(
+                cls._case_style.revert(property)
+            )
+        return cls(**data)
+
+    def as_dict(self) -> 'Dict[str, Any]':
+        has_parent = hasattr(self, "parent_id")
+        base_dict = {
+            "id": None,
+            "parent_id": None,
+        } if has_parent else {"id": None}
+
+        return base_dict | {
+            prop_name: value
+            for prop_name, value in vars(self).items()
+            if prop_name in self._all_props
+        }
+
+    def as_entity(self) -> 'GEntity':
+        data = self.as_dict()
+
+        _ = data.pop("id", None)
+        _ = data.pop("parent_id", None)
+
+        from google.cloud.datastore.entity import Entity
+        entity = Entity(key=self._mount_entity_g_key())
+
+        entity.update({
+            self._case_style(prop_name): value
+            for prop_name, value in data.items()
+        })
+
+        return entity
+
+    def save(self) -> 'None':
+        g_entity = self.as_entity()
+
+        g_entity = self._client.save(
+            entity=g_entity
+        )
+
+        self.id = g_entity.key.id
 
     def __repr__(self) -> 'str':
         return (

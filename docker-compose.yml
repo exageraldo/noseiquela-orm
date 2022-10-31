@@ -1,0 +1,51 @@
+version: "3.7"
+services:
+  test:
+    image: python:3.10-slim
+    container_name: local-test
+    volumes:
+      - ${PWD}:/noseiquela/
+    environment:
+      DATASTORE_DATASET: noseiquela-dev
+      DATASTORE_EMULATOR_HOST: 0.0.0.0:8081
+      DATASTORE_EMULATOR_HOST_PATH: 0.0.0.0:8081/opt/datastore
+      DATASTORE_HOST: http://0.0.0.0:8081
+      DATASTORE_PROJECT_ID: noseiquela-dev
+      PYTHONPATH: /noseiquela/src/
+    command: bash -c "
+      cd /noseiquela &&
+      pip install -U pip &&
+      pip install -r requirements-dev.txt &&
+      pytest tests/unit/ -vvv"
+
+  datastore:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:370.0.0
+    container_name: local-datastore
+    command: bash -c "
+      gcloud beta emulators datastore start
+        --project=noseiquela-dev
+        --host-port=0.0.0.0:8081
+        --consistency=1.0
+        --data-dir=/opt/datastore &&
+      gcloud info --run-diagnostics"
+    ports:
+      - "8081:8081"
+    volumes:
+      - datastore-emulator-storage:/opt/datastore
+
+  datastore-viewer:
+    image: quay.io/gumo/datastore-viewer:v0.2.0
+    container_name: local-datastore-viewer
+    environment:
+      DATASTORE_VIEWER_HOST: 0.0.0.0
+      DATASTORE_VIEWER_PORT: 18081
+      GOOGLE_CLOUD_PROJECT: noseiquela-dev
+      DATASTORE_EMULATOR_HOST: host.docker.internal:8081
+    depends_on:
+      - datastore
+    ports:
+      - "18081:18081"
+
+volumes:
+  datastore-emulator-storage:
+    driver: local

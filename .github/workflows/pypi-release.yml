@@ -6,35 +6,52 @@ on:
     - '**'
 
 jobs:
-  # release:
-  #   name: Create Release
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@master
-  #     - name: Create Release
-  #       id: create_release
-  #       uses: actions/create-release@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         tag_name: ${{ github.ref }}
-  #         release_name: Release ${{ github.ref }}
-  #         body: |
-  #           Changes in this Release
-  #         draft: false
-  #         prerelease: false
+  test:
+    name: Run unit tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install project's requirements
+        run: pip install -r requirements-dev.txt
+      - name: Run tests
+        run: make test
 
-  deploy:
-    # needs: release
+  release:
+    name: Create Release
+    needs: test
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Changes in this Release
+          draft: false
+          prerelease: false
+
+  send-to-pypi:
+    needs: release
     runs-on: ubuntu-20.04
     environment: pypi-release
     steps:
-    - uses: actions/checkout@v1
-    - name: Set up Python
-      uses: actions/setup-python@v1
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Set up python
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: 3.9
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
