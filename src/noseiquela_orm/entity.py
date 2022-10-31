@@ -66,10 +66,10 @@ class ModelMeta(type):
 
 
 class Model(metaclass=ModelMeta):
-    _model_registry = {}
+    _model_registry: 'Dict[str, Model]' = {}
 
     def __init__(self, **kwargs) -> None:
-        unmapped_props = set(kwargs.keys()) - set(self._all_props)
+        unmapped_props = set(kwargs.keys()) - set(self._all_props) # type: ignore
 
         if unmapped_props:
             raise Exception("Propriedades nao mapeadas foram passadas.")
@@ -110,30 +110,30 @@ class Model(metaclass=ModelMeta):
         ))
 
     def __setattr__(self, key: 'str', value: 'Any') -> 'None':
-        if key not in self._all_props:
+        if key not in self._all_props: # type: ignore
             raise Exception("Nao pode atribuir!!!")
         super().__setattr__(key, value)
 
     def _mount_entity_g_key(self) -> 'GKey':
         has_parent = hasattr(self, "parent_id")
-        if has_parent and not self.parent_id:
+        if has_parent and not self.parent_id: # type: ignore
             raise Exception("'parent_id' must be 'str' or 'int'")
 
         parent_key = (
-            self._parent_complete_g_key(self.parent_id)
+            self._parent_complete_g_key(self.parent_id) # type: ignore
             if has_parent
             else None
         )
 
         if self.id is None:
-            return self._partial_g_key(parent_key)
-        return self._complete_g_key(self.id, parent_key)
+            return self._partial_g_key(parent_key) # type: ignore
+        return self._complete_g_key(self.id, parent_key) # type: ignore
 
     @classmethod
     def _generate_default_dict(cls) -> 'Dict[str, Any]':
         return {
             prop: gen_default()
-            for prop, gen_default in cls._default_props.items()
+            for prop, gen_default in cls._default_props.items() # type: ignore
         }
 
     @classmethod
@@ -144,13 +144,13 @@ class Model(metaclass=ModelMeta):
             data["parent_id"] = entity.key.parent.id_or_name
 
         props_to_mount = [
-            prop for prop in cls._all_props
+            prop for prop in cls._all_props # type: ignore
             if prop not in ["id"]
         ]
 
         for property in props_to_mount:
             data[property] = entity.get(
-                cls._case_style.revert(property)
+                cls._case_style.revert(property) # type: ignore
             )
         return cls(**data)
 
@@ -164,7 +164,7 @@ class Model(metaclass=ModelMeta):
         return base_dict | {
             prop_name: value
             for prop_name, value in vars(self).items()
-            if prop_name in self._all_props
+            if prop_name in self._all_props # type: ignore
         }
 
     def as_entity(self) -> 'GEntity':
@@ -177,7 +177,7 @@ class Model(metaclass=ModelMeta):
         entity = Entity(key=self._mount_entity_g_key())
 
         entity.update({
-            self._case_style(prop_name): value
+            self._case_style(prop_name): value # type: ignore
             for prop_name, value in data.items()
         })
 
@@ -186,7 +186,7 @@ class Model(metaclass=ModelMeta):
     def save(self) -> 'None':
         g_entity = self.as_entity()
 
-        g_entity = self._client.save(
+        g_entity = self._client.save( # type: ignore
             entity=g_entity
         )
 

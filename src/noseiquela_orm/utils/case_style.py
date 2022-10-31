@@ -11,7 +11,7 @@ class CaseStyle:
         self.to_case = to_case
 
     @staticmethod
-    def _from_case_style(case_style: 'str', string_value: 'List[str]') -> 'str':
+    def _from_case_style(case_style: 'str', string_value: 'str') -> 'List[str]':
         parse_functions = {
             "camel_case": lambda string_value: [
                 w.group(0) for w in finditer(

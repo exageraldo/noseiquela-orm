@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
     from google.cloud.datastore.key import Key as GKey
 
-    from ..entity import Model
+    from ..entity import Model # type: ignore
 
 
 class KeyProperty(BaseProperty):
@@ -32,7 +32,7 @@ class KeyProperty(BaseProperty):
         )
         self._parent = parent
 
-    def __set_name__(self, owner_class, name):
+    def __set_name__(self, owner_class: 'Model', name: 'str'):
         super().__set_name__(owner_class, name)
 
         def _partial_g_key(
@@ -65,14 +65,17 @@ class KeyProperty(BaseProperty):
         if not self._parent:
             return
 
-        if isinstance(self._parent, str):
-            self._parent = owner_class._model_registry[self._parent]
+        self._parent: 'Model' = ( # type: ignore
+            owner_class._model_registry[self._parent]
+            if isinstance(self._parent, str)
+            else self._parent
+        )
 
         def _parent_complete_g_key(
             id_or_name: 'Union[str, int]',
-        ):
-            return self._parent._client.mount_complete_g_key(
-                kind=self._parent.kind,
+        ) -> 'GKey':
+            return self._parent._client.mount_complete_g_key( # type: ignore
+                kind=self._parent.kind, # type: ignore
                 id_or_name=id_or_name,
             )
 

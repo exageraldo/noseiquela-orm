@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from functools import partial
-    from typing import Any, Dict, Tuple, Optional, Generator, Iterable
+    from typing import Any, Dict, Tuple, Optional, Generator, Iterable, List
     from google.cloud.datastore.query import Query as GoogleQuery
     from .entity import Model
 
@@ -23,7 +23,7 @@ class QueryResult:
         self.timeout = timeout
         self.entity_instance = entity_instance
 
-    def __iter__(self) -> 'Iterable[Model]':
+    def __iter__(self) -> 'Generator[Model, None, None]':
         for entity in self.query.fetch(
             limit=self.limit,
             offset=self.offset,
@@ -94,7 +94,7 @@ class Query:
 
     def __mount_query(
         self,
-        filters: 'Optional[Tuple[str, str, Any]]'=None,
+        filters: 'List'=None,
         order_by: 'Optional[Tuple[str]]'=None,
         projection: 'Optional[Tuple[str]]'=None,
         distinct_on: 'Optional[Tuple[str]]'=None,
@@ -108,7 +108,7 @@ class Query:
             distinct_on=(distinct_on or ()),
         )
 
-    def __process_filters(self, filter_dict: 'Dict') -> 'Tuple[str, str, Any]':
+    def __process_filters(self, filter_dict: 'Dict') -> 'List':
         OPERATIONS_TO_QUERY = {
             "eq": "=",
             "gt": ">",
@@ -126,4 +126,4 @@ class Query:
             _operation = OPERATIONS_TO_QUERY[_operation]
             result.append((self.entity_instance._case_style(_key), _operation, value))
 
-        return tuple(result)
+        return result
