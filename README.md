@@ -5,11 +5,6 @@
 
 **No** **S***ei***Q***ue***L***a* is a small and expressive ORM (Object Relational Mapper) to interact with Google Datastore inspired by Django, Mongo-Engine and Peewee.
 
-## Requirements
-
-- [Google Cloud](https://cloud.google.com/) credentials
-- [Python>=3.8](https://www.python.org/downloads/)
-
 ## Installing
 
 The library can be installed using pip:
@@ -33,10 +28,18 @@ class Customer(Model):
     age = properties.IntegerProperty(required=True)
     is_deleted = properties.BooleanProperty(default=False, required=True)
 
+```
 
+To define a key, simply assign a `KeyProperty` to an attribute with the name `id`. If not explicitly defined, it will be set automatically.
+
+To set an "`ancestor`", just pass the model of the external key. It can be the class itself or a string with the class name.
+
+The "type"/"`kind`" of each model is the name of the class itself, but if you want to set something different, just set `__kind__` to the desired value.
+
+```python
 class CustomerAddress(Model):
     __kind__ = "Address"
-    id = KeyProperty(parent='Customer')
+    id = KeyProperty(parent="Customer")
 
     number = properties.IntegerProperty(required=True)
     address_one = properties.StringProperty(required=True)
@@ -67,7 +70,13 @@ new_customer = Customer(
 )
 
 new_customer.save()
+```
 
+If an `id` has not been set before saving, one will be set and assigned to the instance with the value entered in the database.
+
+It is mandatory that when saving an entity that has an `ancestor`/`parent`, that the `parent_id` has an assigned value.
+
+```python
 new_address = CustomerAddress(
     parent_id=new_customer.id,
     number=199,
@@ -87,12 +96,15 @@ customer_address = Customer.query.filter(parend_id=customer.id)
 less_than_or_eq_29 = Customer.query.filter(age__le=29) # age <= 29
 more_than_30 = Customer.query.filter(age__gt=30) # age > 30
 
+first_customer = Customer.query.first()
+
+dict_customer = first_customer.as_dict()
+g_entity_customer = first_customer.as_entity()
+
 all_customers = [
     customer.as_dict()
     for customer in Customer.query.all()
 ]
-
-first_customer = Customer.query.first()
 ```
 
 ## Authentication
