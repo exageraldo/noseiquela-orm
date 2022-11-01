@@ -85,7 +85,7 @@ class DatastoreClient:
         parent: 'Optional[GKey]'=None,
     ) -> 'GKey':
         if parent and parent.is_partial:
-            raise Exception("Parent deve ter uma chave completa!")
+            raise ValueError("'parent' must be a complete key.")
 
         return self.mount_partial_g_key(
             kind,

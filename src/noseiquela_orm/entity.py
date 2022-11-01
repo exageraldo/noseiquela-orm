@@ -72,7 +72,10 @@ class Model(metaclass=ModelMeta):
         unmapped_props = set(kwargs.keys()) - set(self._all_props) # type: ignore
 
         if unmapped_props:
-            raise Exception("Propriedades nao mapeadas foram passadas.")
+            raise AttributeError((
+                f"type object '{self.__class__.__name__}' "
+                f"has no attributes: {', '.join(unmapped_props)}."
+            ))
 
         data = self._generate_default_dict() | kwargs
 
@@ -111,13 +114,19 @@ class Model(metaclass=ModelMeta):
 
     def __setattr__(self, key: 'str', value: 'Any') -> 'None':
         if key not in self._all_props: # type: ignore
-            raise Exception("Nao pode atribuir!!!")
+            raise AttributeError((
+                f"type object '{self.__class__.__name__}' "
+                f"has no attribute: {key}."
+            ))
         super().__setattr__(key, value)
 
     def _mount_entity_g_key(self) -> 'GKey':
         has_parent = hasattr(self, "parent_id")
         if has_parent and not self.parent_id: # type: ignore
-            raise Exception("'parent_id' must be 'str' or 'int'")
+            raise ValueError((
+                "'parent_id' must be a valid 'str' or 'int' "
+                "to mount the key (partial or complete)."
+            ))
 
         parent_key = (
             self._parent_complete_g_key(self.parent_id) # type: ignore

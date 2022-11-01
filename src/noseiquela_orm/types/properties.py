@@ -34,7 +34,7 @@ class BooleanProperty(BaseProperty):
 
     def _parse_and_validate(self, value) -> 'Any':
         if value is None and self._is_required:
-            raise ValueError("Required property.")
+            raise ValueError(f"'{self._property_name}' is a required property.")
 
         if value is None and not self._is_required:
             return
@@ -79,13 +79,14 @@ class DateTimeProperty(BaseProperty):
 
     def _parse_and_validate(self, value) -> 'Any':
         if value is None and self._is_required:
-            raise ValueError("Required property.")
+            raise ValueError(f"'{self._property_name}' is a required property.")
+
 
         if value is None and not self._is_required:
             return
 
         if not isinstance(value, (datetime, str, DatetimeWithNanoseconds)):
-            raise Exception((
+            raise ValueError((
                 f"'{self._property_name}' must be a "
                 "'str', 'datetime' or 'DatetimeWithNanoseconds' instance."
             ))
@@ -101,9 +102,6 @@ class DateTimeProperty(BaseProperty):
 
         if self._choices and isinstance(self._choices, dict) and value in self._choices:
             value = self.choices[value]
-
-        if not isinstance(value, datetime):
-            raise ValueError(f"'{self._property_name}' must be a 'bool'")
 
         if self._validation and not self._validation(value):
             raise ValueError(f"'{value}' did not pass validation.")
@@ -127,10 +125,10 @@ class FloatProperty(BaseProperty):
         _prop_name: 'Optional[str]' = None
     ) -> 'None':
         if min is not None and not isinstance(min, (int, str, float)):
-            raise Exception()
+            raise ValueError("'min' must be a int, str or float.")
 
         if max is not None and not isinstance(max, (int, str, float)):
-            raise Exception()
+            raise ValueError("'max' must be a int, str or float.")
 
         super().__init__(
             required=required,
@@ -144,13 +142,13 @@ class FloatProperty(BaseProperty):
 
     def _parse_and_validate(self, value) -> 'Any':
         if value is None and self._is_required:
-            raise ValueError("Required property.")
+            raise ValueError(f"'{self._property_name}' is a required property.")
 
         if value is None and not self._is_required:
             return
 
         if not isinstance(value, (int, float, str)):
-            raise Exception((
+            raise ValueError((
                 f"'{self._property_name}' must be a "
                 "'float' or 'str' instance."
             ))
@@ -162,7 +160,7 @@ class FloatProperty(BaseProperty):
 
         if ((self._min_value is not None and value < Decimal(self._min_value)) or
             (self._max_value is not None and value > Decimal(self._max_value))):
-            raise Exception((
+            raise ValueError((
                 f"'{self._property_name}' out of defined range: {value}. "
                 f"max: {self._max_value} | min: {self._min_value}"
             ))
@@ -186,10 +184,10 @@ class IntegerProperty(BaseProperty):
         _prop_name: 'Optional[str]' = None
     ) -> 'None':
         if min is not None and not isinstance(min, int):
-            raise Exception()
+            raise ValueError("'min' must be a int.")
 
         if max is not None and not isinstance(max, int):
-            raise Exception()
+            raise ValueError("'max' must be a int.")
 
         super().__init__(
             required=required,
@@ -203,7 +201,7 @@ class IntegerProperty(BaseProperty):
 
     def _parse_and_validate(self, value) -> 'Any':
         if value is None and self._is_required:
-            raise ValueError("Required property.")
+            raise ValueError(f"'{self._property_name}' is a required property.")
 
         if value is None and not self._is_required:
             return
@@ -215,14 +213,14 @@ class IntegerProperty(BaseProperty):
             value = self.choices[value]
 
         if not isinstance(value, int):
-            raise ValueError(f"'{self._property_name}' must be a 'bool'")
+            raise ValueError(f"'{self._property_name}' must be a 'int'")
 
         if self._validation and not self._validation(value):
             raise ValueError(f"'{value}' did not pass validation.")
 
         if ((self._min_value is not None and value < self._min_value) or
             (self._max_value is not None and value > self._max_value)):
-            raise Exception((
+            raise ValueError((
                 f"'{self._property_name}' out of defined range: {value}. "
                 f"max: {self._max_value} | min: {self._min_value}"
             ))
@@ -243,10 +241,10 @@ class StringProperty(BaseProperty):
         _prop_name: 'Optional[str]' = None
     ) -> 'None':
         if min_length is not None and not isinstance(min_length, int):
-            raise Exception()
+            raise ValueError("'min_length' must be a int.")
 
         if max_length is not None and not isinstance(max_length, int):
-            raise Exception()
+            raise ValueError("'max_length' must be a int.")
 
         super().__init__(
             required=required,
@@ -260,7 +258,7 @@ class StringProperty(BaseProperty):
 
     def _parse_and_validate(self, value) -> 'Any':
         if value is None and self._is_required:
-            raise ValueError("Required property.")
+            raise ValueError(f"'{self._property_name}' is a required property.")
 
         if value is None and not self._is_required:
             return
@@ -272,14 +270,14 @@ class StringProperty(BaseProperty):
             value = self.choices[value]
 
         if not isinstance(value, str):
-            raise ValueError(f"'{self._property_name}' must be a 'bool'")
+            raise ValueError(f"'{self._property_name}' must be a 'str'")
 
         if self._validation and not self._validation(value):
             raise ValueError(f"'{value}' did not pass validation.")
 
         if ((self._min_len is not None and len(value) < self._min_len) or
             (self._max_len is not None and len(value) > self._max_len)):
-            raise Exception((
+            raise ValueError((
                 f"'{self._property_name}' out of defined range: {value}. "
                 f"max: {self._max_len} | min: {self._min_len}"
             ))
@@ -299,10 +297,10 @@ class ListProperty(BaseProperty):
         _prop_name: 'Optional[str]' = None
     ) -> 'None':
         if min_length is not None and not isinstance(min_length, int):
-            raise Exception()
+            raise ValueError("'min_length' must be a int.")
 
         if max_length is not None and not isinstance(max_length, int):
-            raise Exception()
+            raise ValueError("'max_length' must be a int.")
 
         super().__init__(
             required=required,
@@ -315,13 +313,13 @@ class ListProperty(BaseProperty):
 
     def _parse_and_validate(self, value) -> 'Any':
         if value is None and self._is_required:
-            raise ValueError("Required property.")
+            raise ValueError(f"'{self._property_name}' is a required property.")
 
         if value is None and not self._is_required:
             return
 
         if not isinstance(value, (list, set, tuple)):
-            raise ValueError(f"'{self._property_name}' must be a 'bool'")
+            raise ValueError(f"'{self._property_name}' must be a 'list', 'set' or 'tuple'")
 
         value = list(value)
 
@@ -330,7 +328,7 @@ class ListProperty(BaseProperty):
 
         if ((self._min_len is not None and len(value) < self._min_len) or
             (self._max_len is not None and len(value) > self._max_len)):
-            raise Exception((
+            raise ValueError((
                 f"'{self._property_name}' out of defined range: {value}. "
                 f"max: {self._max_len} | min: {self._min_len}"
             ))
@@ -356,13 +354,13 @@ class DictProperty(BaseProperty):
 
     def _parse_and_validate(self, value) -> 'Any':
         if value is None and self._is_required:
-            raise ValueError("Required property.")
+            raise ValueError(f"'{self._property_name}' is a required property.")
 
         if value is None and not self._is_required:
             return
 
         if not isinstance(value, dict):
-            raise ValueError(f"'{self._property_name}' must be a 'bool'")
+            raise ValueError(f"'{self._property_name}' must be a 'dict'")
 
         if self._validation and not self._validation(value):
             raise ValueError(f"'{value}' did not pass validation.")
