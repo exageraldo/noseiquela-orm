@@ -6,12 +6,6 @@
 
 **No** **S***ei***Q***ue***L***a* é um ORM pequeno e expressivo para interagir com o Google Datastore inspirado no Django, Mongo-Engine e Peewee.
 
-
-## Pré-requisitos
-
-- Credenciais no [Google Cloud](https://cloud.google.com/)
-- [Python>=3.8](https://www.python.org/downloads/)
-
 ## Instalação
 
 A biblioteca pode ser baixada usando o pip:
@@ -35,10 +29,18 @@ class Customer(Model):
     age = properties.IntegerProperty(required=True)
     is_deleted = properties.BooleanProperty(default=False, required=True)
 
+```
 
+Para definir uma chave, basta atribuir uma `KeyProperty` a um atributo de nome `id`. Caso não seja definido explicitamente, ele será definido automaticamente.
+
+Para atribuir uma `parent_key`, basta passar o modelo referente a chave externa. Pode ser a propria classe ou uma string com o nome da classe.
+
+O "tipo"/"`kind`" de cada modelo é o nome da propria classe, mas caso deseje definir algum diferente, basta definir o `__kind__` com o valor desejado.
+
+```python
 class CustomerAddress(Model):
     __kind__ = "Address"
-    id = KeyProperty(parent='Customer')
+    id = KeyProperty(parent="Customer")
 
     number = properties.IntegerProperty(required=True)
     address_one = properties.StringProperty(required=True)
@@ -69,7 +71,13 @@ new_customer = Customer(
 )
 
 new_customer.save()
+```
 
+Caso um `id` não tenha sido definido antes de salvar, será definido um e atribuido a instancia com o valor inserido no banco.
+
+É obrigatorio que ao salvar uma entidade que possua um `ancestor`/`parent`, que o valor do `parent_id` tenha um valor atribuido.
+
+```python
 new_address = CustomerAddress(
     parent_id=new_customer.id,
     number=199,
@@ -88,6 +96,11 @@ customer_address = Customer.query.filter(parend_id=customer.id)
 
 less_than_or_eq_29 = Customer.query.filter(age__le=29) # age <= 29
 more_than_30 = Customer.query.filter(age__gt=30) # age > 30
+
+first_customer = Customer.query.first()
+
+dict_customer = first_customer.as_dict()
+g_entity_customer = first_customer.as_entity()
 
 all_customers = [
     customer.as_dict()
