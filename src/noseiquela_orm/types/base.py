@@ -18,10 +18,10 @@ class BaseProperty(ABC):
         _prop_name: 'Optional[str]'=None,
     ) -> 'None':
         if choices and not isinstance(choices, (list, tuple, dict, set)):
-            raise Exception("'choices' must be a list, tuple, dict or set.")
+            raise ValueError("'choices' must be a list, tuple, dict or set.")
 
         if validation and not callable(validation):
-            raise Exception("'validation' must be a callable.")
+            raise ValueError("'validation' must be a callable.")
 
         self._is_required = required
         self._choices = choices

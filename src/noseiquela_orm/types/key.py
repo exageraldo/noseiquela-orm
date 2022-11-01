@@ -39,7 +39,7 @@ class KeyProperty(BaseProperty):
             parent: 'Optional[GKey]'=None
         ):
             if parent and parent.is_partial:
-                raise Exception("Parent deve ser uma chave completa!")
+                raise ValueError("'parent' must be a complete key.")
 
             return owner_class._client.mount_partial_g_key(
                 kind=owner_class.kind,
@@ -51,7 +51,7 @@ class KeyProperty(BaseProperty):
             parent: 'Optional[GKey]'=None,
         ):
             if parent and parent.is_partial:
-                raise Exception("Parent deve ser uma chave completa!")
+                raise ValueError("'parent' must be a complete key.")
 
             return owner_class._client.mount_complete_g_key(
                 kind=owner_class.kind,
