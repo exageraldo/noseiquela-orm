@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from .query import Query
 from .types.properties import BaseProperty
 from .utils.case_style import CaseStyle
-
+from .utils.collections import merge_dicts
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -37,10 +37,13 @@ class ModelMeta(type):
         attrs['project'] = ds_client.project
         attrs['namespace'] = ds_client.namespace
 
-        case_style = {
-            "from_case": "snake_case",
-            "to_case": "snake_case",
-        } | (attrs.pop("__case_style__", {}))
+        case_style = merge_dicts(
+            {
+                "from_case": "snake_case",
+                "to_case": "snake_case",
+            },
+            attrs.pop("__case_style__", {})
+        )
 
         attrs['_case_style'] = CaseStyle(**case_style)
 
@@ -77,7 +80,10 @@ class Model(metaclass=ModelMeta):
                 f"has no attributes: {', '.join(unmapped_props)}."
             ))
 
-        data = self._generate_default_dict() | kwargs
+        data = merge_dicts(
+            self._generate_default_dict(),
+            kwargs
+        )
 
         for prop, value in data.items():
             setattr(self, prop, value)
@@ -147,7 +153,10 @@ class Model(metaclass=ModelMeta):
 
     @classmethod
     def _mount_from_google_entity(cls, entity: 'GEntity') -> 'Model':
-        data = cls._generate_default_dict() | {"id": entity.key.id_or_name}
+        data = merge_dicts(
+            cls._generate_default_dict(),
+            {"id": entity.key.id_or_name}
+        )
 
         if hasattr(cls, "parent_id") and entity.key.parent:
             data["parent_id"] = entity.key.parent.id_or_name
@@ -170,11 +179,14 @@ class Model(metaclass=ModelMeta):
             "parent_id": None,
         } if has_parent else {"id": None}
 
-        return base_dict | {
-            prop_name: value
-            for prop_name, value in vars(self).items()
-            if prop_name in self._all_props # type: ignore
-        }
+        return merge_dicts(
+            base_dict,
+            {
+                prop_name: value
+                for prop_name, value in vars(self).items()
+                if prop_name in self._all_props # type: ignore
+            }
+        )
 
     def as_entity(self) -> 'GEntity':
         data = self.as_dict()
