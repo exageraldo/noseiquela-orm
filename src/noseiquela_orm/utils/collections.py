@@ -1,4 +1,4 @@
-from typing import Dict, TypeVar, Union
+from typing import Dict, TypeVar
 
 _Keys = TypeVar("_Keys")
 _Values = TypeVar("_Values")
@@ -8,7 +8,7 @@ def merge_dicts(
     left: Dict[_Keys, _Values],
     right: Dict[_Keys, _Values],
     /,
-) -> Dict[Union[_Keys, _Keys], Union[_Values, _Values]]:
+) -> Dict[_Keys, _Values]:
     """Merge two dictionaries together into a new dict with keys from both dicts.
 
     Note that the values from the right dict will overwrite the values from the left one
