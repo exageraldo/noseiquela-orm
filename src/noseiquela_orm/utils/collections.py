@@ -22,13 +22,6 @@ def merge_dicts(
     ```
 
     This function backports the dictionary union operator from python3.9 to python3.8.
-
-    Args:
-        left (Dict): The first dictionary to merge.
-        right (Dict): The second dictionary to merge.
-
-    Returns:
-        Dict: A new dict with keys from both left and right.
     """
 
     # TODO(python3.9): replace this function with the dictionary union operator when
